@@ -57,6 +57,22 @@
     font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
   }
+  .fee-tier-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px 0;
+    font-size: 14px; color: #3a3a3c; flex-wrap: wrap;
+  }
+  .fee-tier-row:not(:last-child) { border-bottom: 1px solid #f2f2f7; }
+  .fee-tier-inp {
+    width: 70px; font-size: 14px; font-weight: 600; padding: 6px 8px; border-radius: 8px;
+    border: 1px solid #e5e5ea; background: #f9f9fb; color: #1d1d1f; text-align: center;
+    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  .fee-tier-inp:focus, .fee-rate-inp:focus { outline: none; border-color: #0071e3; background: #fff; }
+  .fee-rate-inp {
+    width: 55px; font-size: 14px; font-weight: 700; padding: 6px 8px; border-radius: 8px;
+    border: 1px solid #cfe4ff; background: #eef6ff; color: #0071e3; text-align: center;
+    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
   .mode-tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; background: #eceef1; border-radius: 14px; padding: 5px; }
   .mode-tab {
     flex: 1; padding: 11px; border-radius: 10px; border: none; background: transparent;
@@ -111,7 +127,6 @@
     background: linear-gradient(135deg, #eef6ff, #f5faff);
     border-radius: 16px; padding: 16px 14px; border: 1px solid #e0eeff;
     text-align: center;
-}
   }
   .metric .m-label { font-size: 12px; color: #0071e3; margin-bottom: 6px; font-weight: 600; }
   .metric .m-val {
@@ -139,6 +154,7 @@
   .section.active { display: block; }
   @media (max-width: 500px) { .grid2, .metric-grid { grid-template-columns: 1fr 1fr; } }
 </style>
+
 </head>
 <body>
  <div style="text-align:center; margin: 20px 0;">
@@ -167,6 +183,36 @@
           <span class="unit">TWD/USD</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>手續費費率設定</h2>
+    <div class="fee-tier-row">
+      <span>保費未達</span>
+      <input type="number" class="fee-tier-inp" id="feeT1" value="200" oninput="updateFeeRate()">
+      <span>萬 → 手續費</span>
+      <input type="number" class="fee-rate-inp" id="feeR1" value="5" step="0.1" oninput="updateFeeRate()">
+      <span>%</span>
+    </div>
+    <div class="fee-tier-row">
+      <span id="feeT1Echo">200</span><span>萬 ～ 未達</span>
+      <input type="number" class="fee-tier-inp" id="feeT2" value="500" oninput="updateFeeRate()">
+      <span>萬 → 手續費</span>
+      <input type="number" class="fee-rate-inp" id="feeR2" value="4" step="0.1" oninput="updateFeeRate()">
+      <span>%</span>
+    </div>
+    <div class="fee-tier-row">
+      <span id="feeT2Echo">500</span><span>萬 ～ 未達</span>
+      <input type="number" class="fee-tier-inp" id="feeT3" value="1000" oninput="updateFeeRate()">
+      <span>萬 → 手續費</span>
+      <input type="number" class="fee-rate-inp" id="feeR3" value="3" step="0.1" oninput="updateFeeRate()">
+      <span>%</span>
+    </div>
+    <div class="fee-tier-row">
+      <span id="feeT3Echo">1000</span><span>萬以上 → 手續費</span>
+      <input type="number" class="fee-rate-inp" id="feeR4" value="2" step="0.1" oninput="updateFeeRate()">
+      <span>%</span>
     </div>
   </div>
 
@@ -233,19 +279,28 @@ let allocSeq = 0, compareSeq = 0;
 let allocOrder = [], compareOrder = [];
 
 function getFeeRate(wan) {
-  const p = wan * 10000;
-  if (p >= 10000000) return 0.02;
-  if (p >= 5000000)  return 0.03;
-  if (p >= 2000000)  return 0.04;  // 200萬含以上 4%
-  return 0.05;
+  const t1 = parseFloat(document.getElementById('feeT1').value) || 0;
+  const t2 = parseFloat(document.getElementById('feeT2').value) || 0;
+  const t3 = parseFloat(document.getElementById('feeT3').value) || 0;
+  const r1 = (parseFloat(document.getElementById('feeR1').value) || 0) / 100;
+  const r2 = (parseFloat(document.getElementById('feeR2').value) || 0) / 100;
+  const r3 = (parseFloat(document.getElementById('feeR3').value) || 0) / 100;
+  const r4 = (parseFloat(document.getElementById('feeR4').value) || 0) / 100;
+  if (wan >= t3) return r4;
+  if (wan >= t2) return r3;
+  if (wan >= t1) return r2;
+  return r1;
 }
 
 function updateFeeRate() {
+  document.getElementById('feeT1Echo').textContent = document.getElementById('feeT1').value;
+  document.getElementById('feeT2Echo').textContent = document.getElementById('feeT2').value;
+  document.getElementById('feeT3Echo').textContent = document.getElementById('feeT3').value;
   const wan = parseFloat(document.getElementById('premium').value) || 0;
   const rate = getFeeRate(wan);
   const effective = wan * 10000 * (1 - rate);
   document.getElementById('fee-info').textContent =
-    `手續費 ${(rate*100).toFixed(0)}%｜實際投入 TWD ${fmt(effective)}`;
+    `手續費 ${(rate*100).toFixed(1)}%｜實際投入 TWD ${fmt(effective)}`;
 }
 
 function switchMode(mode) {
@@ -412,7 +467,7 @@ function calcAlloc() {
   tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="2"></td><td>TWD ${fmt(Math.round(sumM))}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
 
   document.getElementById('alloc-metrics').innerHTML=`
-    <div class="metric"><div class="m-label">💰 手續費率</div><div class="m-val">${(rate*100).toFixed(0)}%</div></div>
+    <div class="metric"><div class="m-label">💰 手續費率</div><div class="m-val">${(rate*100).toFixed(1)}%</div></div>
     <div class="metric"><div class="m-label">📅 每月總配息</div><div class="m-val">TWD ${fmt(Math.round(sumM))}</div></div>
     <div class="metric"><div class="m-label">📈 綜合年化報酬</div><div class="m-val">${((sumY/eff)*100).toFixed(2)}%</div></div>
   `;
@@ -456,7 +511,7 @@ function calcCompare() {
     <div class="metric"><div class="m-label">💡 最高 vs 最低差</div><div class="m-val">TWD ${fmt(Math.round(best.mTwd-worst.mTwd))}/月</div></div>
   `;
   document.getElementById('compare-summary').textContent=
-    `相同保費 ${wan} 萬（手續費 ${(rate*100).toFixed(0)}%，實際投入 TWD ${fmt(Math.round(eff))}）下各基金每月配息差異`;
+    `相同保費 ${wan} 萬（手續費 ${(rate*100).toFixed(1)}%，實際投入 TWD ${fmt(Math.round(eff))}）下各基金每月配息差異`;
   document.getElementById('compare-results').classList.add('show');
   document.getElementById('compare-results').scrollIntoView({behavior:'smooth'});
 }
