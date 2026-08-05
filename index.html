@@ -57,22 +57,6 @@
     font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
   }
-  .fee-tier-row {
-    display: flex; align-items: center; gap: 8px; padding: 8px 0;
-    font-size: 14px; color: #3a3a3c; flex-wrap: wrap;
-  }
-  .fee-tier-row:not(:last-child) { border-bottom: 1px solid #f2f2f7; }
-  .fee-tier-inp {
-    width: 70px; font-size: 14px; font-weight: 600; padding: 6px 8px; border-radius: 8px;
-    border: 1px solid #e5e5ea; background: #f9f9fb; color: #1d1d1f; text-align: center;
-    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-  }
-  .fee-tier-inp:focus, .fee-rate-inp:focus { outline: none; border-color: #0071e3; background: #fff; }
-  .fee-rate-inp {
-    width: 55px; font-size: 14px; font-weight: 700; padding: 6px 8px; border-radius: 8px;
-    border: 1px solid #cfe4ff; background: #eef6ff; color: #0071e3; text-align: center;
-    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-  }
   .mode-tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; background: #eceef1; border-radius: 14px; padding: 5px; }
   .mode-tab {
     flex: 1; padding: 11px; border-radius: 10px; border: none; background: transparent;
@@ -167,14 +151,20 @@
 
   <div class="card">
     <h2>基本設定</h2>
-    <div class="grid2">
+    <div class="grid2" style="grid-template-columns: 1fr 1fr 1fr;">
       <div class="field">
         <label>保費</label>
         <div class="input-wrap">
-          <input type="number" id="premium" value="200" step="1" oninput="updateFeeRate()">
+          <input type="number" id="premium" value="200" step="1" oninput="onPremiumChange()">
           <span class="unit">萬元</span>
         </div>
-        <div class="fee-info" id="fee-info"></div>
+      </div>
+      <div class="field">
+        <label>手續費</label>
+        <div class="input-wrap">
+          <input type="number" id="feeRatePct" value="4" step="0.1" oninput="onFeeManualChange()">
+          <span class="unit">%</span>
+        </div>
       </div>
       <div class="field">
         <label>美金匯率</label>
@@ -184,36 +174,7 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>手續費費率設定</h2>
-    <div class="fee-tier-row">
-      <span>保費未達</span>
-      <input type="number" class="fee-tier-inp" id="feeT1" value="200" oninput="updateFeeRate()">
-      <span>萬 → 手續費</span>
-      <input type="number" class="fee-rate-inp" id="feeR1" value="5" step="0.1" oninput="updateFeeRate()">
-      <span>%</span>
-    </div>
-    <div class="fee-tier-row">
-      <span id="feeT1Echo">200</span><span>萬 ～ 未達</span>
-      <input type="number" class="fee-tier-inp" id="feeT2" value="500" oninput="updateFeeRate()">
-      <span>萬 → 手續費</span>
-      <input type="number" class="fee-rate-inp" id="feeR2" value="4" step="0.1" oninput="updateFeeRate()">
-      <span>%</span>
-    </div>
-    <div class="fee-tier-row">
-      <span id="feeT2Echo">500</span><span>萬 ～ 未達</span>
-      <input type="number" class="fee-tier-inp" id="feeT3" value="1000" oninput="updateFeeRate()">
-      <span>萬 → 手續費</span>
-      <input type="number" class="fee-rate-inp" id="feeR3" value="3" step="0.1" oninput="updateFeeRate()">
-      <span>%</span>
-    </div>
-    <div class="fee-tier-row">
-      <span id="feeT3Echo">1000</span><span>萬以上 → 手續費</span>
-      <input type="number" class="fee-rate-inp" id="feeR4" value="2" step="0.1" oninput="updateFeeRate()">
-      <span>%</span>
-    </div>
+    <div class="fee-info" id="fee-info"></div>
   </div>
 
   <div class="mode-tabs">
@@ -278,30 +239,40 @@ const PRESET_FUNDS = [
 let allocSeq = 0, compareSeq = 0;
 let allocOrder = [], compareOrder = [];
 
-function getFeeRate(wan) {
-  const t1 = parseFloat(document.getElementById('feeT1').value) || 0;
-  const t2 = parseFloat(document.getElementById('feeT2').value) || 0;
-  const t3 = parseFloat(document.getElementById('feeT3').value) || 0;
-  const r1 = (parseFloat(document.getElementById('feeR1').value) || 0) / 100;
-  const r2 = (parseFloat(document.getElementById('feeR2').value) || 0) / 100;
-  const r3 = (parseFloat(document.getElementById('feeR3').value) || 0) / 100;
-  const r4 = (parseFloat(document.getElementById('feeR4').value) || 0) / 100;
-  if (wan >= t3) return r4;
-  if (wan >= t2) return r3;
-  if (wan >= t1) return r2;
-  return r1;
+// 內部預設級距（不顯示在畫面上，只用來自動帶出手續費%）
+function getDefaultFeeRate(wan) {
+  if (wan >= 1000) return 2;
+  if (wan >= 500)  return 3;
+  if (wan >= 200)  return 4;
+  return 5;
 }
 
-function updateFeeRate() {
-  document.getElementById('feeT1Echo').textContent = document.getElementById('feeT1').value;
-  document.getElementById('feeT2Echo').textContent = document.getElementById('feeT2').value;
-  document.getElementById('feeT3Echo').textContent = document.getElementById('feeT3').value;
+// 保費變動時：自動帶出對應級距的手續費%，並重新計算
+function onPremiumChange() {
   const wan = parseFloat(document.getElementById('premium').value) || 0;
-  const rate = getFeeRate(wan);
+  document.getElementById('feeRatePct').value = getDefaultFeeRate(wan);
+  updateFeeInfo();
+}
+
+// 手動修改手續費%時：直接採用手動輸入的值，不覆蓋
+function onFeeManualChange() {
+  updateFeeInfo();
+}
+
+function updateFeeInfo() {
+  const wan = parseFloat(document.getElementById('premium').value) || 0;
+  const rate = (parseFloat(document.getElementById('feeRatePct').value) || 0) / 100;
   const effective = wan * 10000 * (1 - rate);
   document.getElementById('fee-info').textContent =
-    `手續費 ${(rate*100).toFixed(1)}%｜實際投入 TWD ${fmt(effective)}`;
+    `實際投入 TWD ${fmt(effective)}`;
 }
+
+// 供計算函式呼叫，取得目前手續費率（不論是自動帶出或手動輸入）
+function getFeeRate(wan) {
+  return (parseFloat(document.getElementById('feeRatePct').value) || 0) / 100;
+}
+
+function updateFeeRate() { updateFeeInfo(); }
 
 function switchMode(mode) {
   ['alloc','compare'].forEach(m => {
@@ -519,7 +490,7 @@ function calcCompare() {
 // 預設各載入 1 檔
 addAllocFund();
 addCompareFund();
-updateFeeRate();
+onPremiumChange();
 </script>
 </body>
 </html>
