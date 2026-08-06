@@ -288,9 +288,10 @@ async function fetchLiveRate() {
     if (twd) {
       document.getElementById('usdRate').value = twd.toFixed(3);
       const now = new Date();
-      const hh = String(now.getHours()).padStart(2,'0');
-      const mm = String(now.getMinutes()).padStart(2,'0');
-      info.textContent = `即時匯率 ${twd.toFixed(3)}（更新於 ${hh}:${mm}，點擊重新整理）`;
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth()+1).padStart(2,'0');
+      const dd = String(now.getDate()).padStart(2,'0');
+      info.textContent = `即時匯率 ${twd.toFixed(3)}（更新於 ${yyyy}/${mm}/${dd}，點擊重新整理）`;
     } else {
       info.textContent = '無法取得即時匯率，請手動輸入（點擊重試）';
     }
