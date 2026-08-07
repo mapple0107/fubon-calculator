@@ -179,10 +179,9 @@ function renderFundChart(key) {
   const box = document.getElementById('dcaFundChart');
   if (!fund) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
-  // 模擬每月投入固定金額，用年度報酬率換算成月報酬率複利計算
-  const monthlyInvest = 10000; // 模擬用每月投入金額(元)
+  const monthlyInvest = 10000;
   let principal = 0, value = 0;
-  const points = []; // {year, principal, value}
+  const points = [];
   fund.annualReturns.forEach(yr => {
     const monthlyRate = Math.pow(1 + yr.r / 100, 1/12) - 1;
     for (let m = 0; m < 12; m++) {
@@ -193,42 +192,82 @@ function renderFundChart(key) {
   });
 
   const maxVal = Math.max(...points.map(p => p.value));
-  const w = 100, h = 100;
+  const w = 600, h = 260, padTop = 20, padBottom = 30, padLeft = 10, padRight = 10;
+  const plotH = h - padTop - padBottom;
   const n = points.length;
 
   const toXY = (i, val) => {
-    const x = (i / (n - 1)) * w;
-    const y = h - (val / maxVal) * h;
+    const x = padLeft + (i / (n - 1)) * (w - padLeft - padRight);
+    const y = padTop + plotH - (val / maxVal) * plotH;
     return [x, y];
   };
 
-  const valuePath = points.map((p, i) => toXY(i, p.value).join(',')).join(' L ');
-  const principalPath = points.map((p, i) => toXY(i, p.principal).join(',')).join(' L ');
-  const areaClose = `L ${w},${h} L 0,${h} Z`;
+  // 平滑曲線：用簡單的三次貝茲近似 (Catmull-Rom 轉換)
+  function smoothPath(pts) {
+    if (pts.length < 3) return `M ${pts.map(p=>p.join(',')).join(' L ')}`;
+    let d = `M ${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i === 0 ? i : i - 1];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`;
+    }
+    return d;
+  }
+
+  const valuePts = points.map((p, i) => toXY(i, p.value));
+  const principalPts = points.map((p, i) => toXY(i, p.principal));
+  const valuePath = smoothPath(valuePts);
+  const principalPath = smoothPath(principalPts);
+  const lastV = valuePts[valuePts.length - 1];
+  const areaPath = `${valuePath} L ${lastV[0]},${padTop+plotH} L ${valuePts[0][0]},${padTop+plotH} Z`;
 
   const finalPrincipal = points[points.length-1].principal;
   const finalValue = points[points.length-1].value;
   const cagr = calcCAGR(fund.cumulativeReturnSinceInception, fund.inceptionDate);
 
-  const yearLabels = points.map((p, i) =>
-    `<div style="position:absolute; left:${(i/(n-1))*100}%; transform:translateX(-50%); font-size:10px; color:#86868b;">${p.year}</div>`
-  ).join('');
+  const yearLabels = points.map((p, i) => {
+    const x = padLeft + (i / (n - 1)) * (w - padLeft - padRight);
+    return `<text x="${x}" y="${h-8}" font-size="10" fill="#86868b" text-anchor="middle">${p.year}</text>`;
+  }).join('');
 
   box.innerHTML = `
-    <div style="background:#f9f9fb; border-radius:14px; padding:14px 16px;">
-      <div style="font-size:12px; color:#86868b; margin-bottom:2px;">近10年模擬定期定額累積走勢（每月投入 ${fmt(monthlyInvest)} 元）</div>
-      <div style="font-size:11px; color:#c7c7cc; margin-bottom:10px;">依年度實際報酬率換算，僅供參考，過去績效不代表未來表現</div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%; height:180px; display:block;">
-        <path d="M 0,${h} L ${valuePath} ${areaClose}" fill="#cfe4ff" opacity="0.6"></path>
-        <path d="M ${valuePath}" fill="none" stroke="#0071e3" stroke-width="1"></path>
-        <path d="M ${principalPath}" fill="none" stroke="#1d1d1f" stroke-width="0.8" stroke-dasharray="2,1.5"></path>
-      </svg>
-      <div style="position:relative; height:16px; margin-top:2px;">${yearLabels}</div>
-      <div style="display:flex; gap:16px; margin-top:10px; font-size:12px;">
-        <div><span style="display:inline-block;width:10px;height:10px;background:#0071e3;border-radius:2px;margin-right:4px;"></span>累積金額 ${fmt(finalValue)} 元</div>
-        <div><span style="display:inline-block;width:10px;height:2px;background:#1d1d1f;margin-right:4px;vertical-align:middle;"></span>投入本金 ${fmt(finalPrincipal)} 元</div>
+    <div style="background:linear-gradient(135deg,#f4f8ff,#fbfcff); border-radius:16px; padding:18px 20px; border:1px solid #e8f0ff;">
+      <div style="font-size:13px; font-weight:700; color:#1d1d1f; margin-bottom:2px;">近10年模擬定期定額累積走勢</div>
+      <div style="font-size:11px; color:#a0a0a5; margin-bottom:12px;">每月投入 ${fmt(monthlyInvest)} 元｜依年度實際報酬率換算，僅供參考，過去績效不代表未來表現</div>
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <svg viewBox="0 0 ${w} ${h}" style="flex:1; min-width:280px; height:220px;">
+          <defs>
+            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0071e3" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#0071e3" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <path d="${areaPath}" fill="url(#areaGrad)"></path>
+          <path d="${valuePath}" fill="none" stroke="#0071e3" stroke-width="2.5" stroke-linecap="round"></path>
+          <path d="${principalPath}" fill="none" stroke="#c7c7cc" stroke-width="1.5" stroke-dasharray="4,3"></path>
+          ${yearLabels}
+        </svg>
+        <div style="min-width:150px; display:flex; flex-direction:column; gap:14px;">
+          <div>
+            <div style="font-size:11px; color:#86868b; margin-bottom:2px;">累積金額</div>
+            <div style="font-size:22px; font-weight:800; color:#0071e3; font-family:'SF Mono',Menlo,monospace;">${fmt(finalValue)}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; color:#86868b; margin-bottom:2px;">投入本金</div>
+            <div style="font-size:16px; font-weight:700; color:#8a8a8e; font-family:'SF Mono',Menlo,monospace;">${fmt(finalPrincipal)}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; color:#86868b; margin-bottom:2px;">CAGR</div>
+            <div style="font-size:16px; font-weight:700; color:#1a8a3c; font-family:'SF Mono',Menlo,monospace;">${cagr.toFixed(2)}%</div>
+          </div>
+        </div>
       </div>
-      <div style="font-size:13px; color:#0071e3; margin-top:8px; font-weight:700;">成立至今年化報酬率（CAGR）：${cagr.toFixed(2)}%</div>
     </div>
   `;
   box.style.display = 'block';
