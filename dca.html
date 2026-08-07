@@ -118,7 +118,7 @@
       <div class="field">
         <label>每月投入金額</label>
         <div class="input-wrap">
-          <input type="number" id="dcaMonthly" value="10000" step="1000">
+          <input type="number" id="dcaMonthly" value="10000" step="1000" oninput="onMonthlyChange()">
           <span class="unit">元</span>
         </div>
       </div>
@@ -179,7 +179,7 @@ function renderFundChart(key) {
   const box = document.getElementById('dcaFundChart');
   if (!fund) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
-  const monthlyInvest = 10000;
+  const monthlyInvest = parseFloat(document.getElementById('dcaMonthly').value) || 10000;
   let principal = 0, value = 0;
   const points = [];
   fund.annualReturns.forEach(yr => {
@@ -271,6 +271,11 @@ function renderFundChart(key) {
     </div>
   `;
   box.style.display = 'block';
+}
+
+function onMonthlyChange() {
+  const key = document.getElementById('dcaFundSelect').value;
+  if (key) renderFundChart(key);
 }
 
 function onFundSelectChange() {
