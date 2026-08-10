@@ -143,6 +143,7 @@
 
   <div class="results card" id="dca-results" style="margin-top:1.25rem;">
     <h2>試算結果</h2>
+    <div style="font-size:11px; color:#86868b; margin:-8px 0 12px;">本結果假設每年固定套用您輸入的「預期年化報酬率」計算，屬理想化情境；與上方圖表採用歷年實際報酬率逐年複利不同，兩者金額本來就會有落差，僅供參考。</div>
     <div class="metric-grid" id="dca-metrics"></div>
     <table>
       <thead><tr><th>年度</th><th>累積投入</th><th>預估價值</th><th>累積獲利</th></tr></thead>
@@ -239,7 +240,7 @@ function renderFundChart(key) {
   box.innerHTML = `
     <div style="background:linear-gradient(135deg,#f4f8ff,#fbfcff); border-radius:16px; padding:18px 20px; border:1px solid #e8f0ff;">
       <div style="font-size:13px; font-weight:700; color:#1d1d1f; margin-bottom:2px;">近10年模擬定期定額累積走勢</div>
-      <div style="font-size:11px; color:#a0a0a5; margin-bottom:12px;">每月投入 ${fmt(monthlyInvest)} 元｜依年度實際報酬率換算，僅供參考，過去績效不代表未來表現</div>
+      <div style="font-size:11px; color:#a0a0a5; margin-bottom:12px;">每月投入 ${fmt(monthlyInvest)} 元｜依「歷年實際年度報酬率」逐年複利換算，僅供參考，過去績效不代表未來表現。與下方試算結果採固定報酬率假設不同，兩者金額不會相同。</div>
       <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
         <svg viewBox="0 0 ${w} ${h}" style="flex:1; min-width:280px; height:220px;">
           <defs>
