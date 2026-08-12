@@ -247,7 +247,7 @@
       <h2>配置試算結果</h2>
       <div class="metric-grid" id="alloc-metrics"></div>
       <table>
-        <thead><tr><th>排名</th><th>基金</th><th>配置</th><th>淨值</th><th>分配</th><th>月配息(TWD)</th><th>報酬率</th></tr></thead>
+        <thead><tr><th>排名</th><th>基金</th><th>配置</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
         <tbody id="alloc-table"></tbody>
       </table>
       <div class="summary-row" id="alloc-summary"></div>
@@ -267,7 +267,7 @@
       <h2>基金比較結果</h2>
       <div class="metric-grid" id="compare-metrics"></div>
       <table>
-        <thead><tr><th>排名</th><th>基金</th><th>淨值</th><th>分配</th><th>月配息(TWD)</th><th>年配息(TWD)</th><th>報酬率</th></tr></thead>
+        <thead><tr><th>排名</th><th>基金</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
         <tbody id="compare-table"></tbody>
       </table>
       <div class="summary-row" id="compare-summary"></div>
@@ -498,9 +498,10 @@ function calcAlloc() {
     if (!nav||!dist) { showWarn(warn,`「${name}」淨值或分配金額未填寫。`); return; }
     if (!ratio)      { showWarn(warn,`「${name}」配置比例為 0。`); return; }
     const alloc = eff*(ratio/100);
-    const mTwd  = (alloc/usdR/nav)*dist*usdR;
+    const units = alloc/usdR/nav;
+    const mTwd  = units*dist*usdR;
     const yTwd  = mTwd*12;
-    results.push({name,nav,dist,ratio,mTwd,yTwd,yieldR:(yTwd/alloc)*100});
+    results.push({name,nav,dist,ratio,units,mTwd,yTwd,yieldR:(yTwd/alloc)*100});
   }
 
   results.sort((a,b)=>b.yieldR-a.yieldR);
@@ -510,9 +511,9 @@ function calcAlloc() {
   let sumM=0, sumY=0;
   results.forEach((r,i)=>{
     sumM+=r.mTwd; sumY+=r.yTwd;
-    tbody.innerHTML+=`<tr><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${r.ratio}%</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
+    tbody.innerHTML+=`<tr><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${r.ratio}%</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
   });
-  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="2"></td><td>TWD ${fmt(Math.round(sumM))}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
+  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="3"></td><td>TWD ${fmt(Math.round(sumM))}</td><td>TWD ${fmt(Math.round(sumY))}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
 
   document.getElementById('alloc-metrics').innerHTML=`
     <div class="metric"><div class="m-label">💰 手續費率</div><div class="m-val">${(rate*100).toFixed(1)}%</div></div>
@@ -539,9 +540,10 @@ function calcCompare() {
   for (const id of compareOrder) {
     const {name,nav,dist} = getFundData(id);
     if (!nav||!dist) { showWarn(warn,`「${name}」淨值或分配金額未填寫。`); return; }
-    const mTwd = (eff/usdR/nav)*dist*usdR;
+    const units = eff/usdR/nav;
+    const mTwd = units*dist*usdR;
     const yTwd = mTwd*12;
-    results.push({name,nav,dist,mTwd,yTwd,yieldR:(yTwd/eff)*100});
+    results.push({name,nav,dist,units,mTwd,yTwd,yieldR:(yTwd/eff)*100});
   }
 
   results.sort((a,b)=>b.yieldR-a.yieldR);
@@ -549,7 +551,7 @@ function calcCompare() {
   const tbody=document.getElementById('compare-table');
   tbody.innerHTML='';
   results.forEach((r,i)=>{
-    tbody.innerHTML+=`<tr${i===0?' class="top-row"':''}><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
+    tbody.innerHTML+=`<tr${i===0?' class="top-row"':''}><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
   });
 
   const best=results[0], worst=results[results.length-1];
