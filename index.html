@@ -310,8 +310,16 @@ function updateFeeInfo() {
   const wan = parseFloat(document.getElementById('premium').value) || 0;
   const rate = (parseFloat(document.getElementById('feeRatePct').value) || 0) / 100;
   const effective = wan * 10000 * (1 - rate);
-  document.getElementById('fee-info').textContent =
-    `實際投入 TWD ${fmt(effective)}`;
+  const tier = wan >= 1000 ? '1000萬以上'
+             : wan >= 500  ? '500～1000萬'
+             : wan >= 200  ? '200～500萬'
+             : '未滿200萬';
+  document.getElementById('fee-info').innerHTML =
+    `實際投入 TWD ${fmt(effective)}` +
+    `<div style="color:#86868b;font-weight:400;margin-top:4px;">` +
+    `手續費級距：未滿200萬 5%｜200～500萬 4%｜500～1000萬 3%｜1000萬以上 2%　` +
+    `（目前保費 ${wan} 萬 屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%）` +
+    `</div>`;
 }
 
 // 供計算函式呼叫，取得目前手續費率（不論是自動帶出或手動輸入）
