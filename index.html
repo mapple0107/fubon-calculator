@@ -209,6 +209,7 @@
           <input type="number" id="premium" value="200" step="1" oninput="onPremiumChange()">
           <span class="unit">萬元</span>
         </div>
+        <div class="fee-info" id="premium-info" style="margin-top:6px;"></div>
       </div>
       <div class="field">
         <label>手續費</label>
@@ -216,6 +217,7 @@
           <input type="number" id="feeRatePct" value="4" step="0.1" oninput="onFeeManualChange()">
           <span class="unit">%</span>
         </div>
+        <div class="fee-info" id="fee-info" style="margin-top:6px;"></div>
       </div>
       <div class="field">
         <label>美金匯率</label>
@@ -226,7 +228,6 @@
         <div class="fee-info" id="rate-info" style="margin-top:6px;">載入即時匯率中…</div>
       </div>
     </div>
-    <div class="fee-info" id="fee-info"></div>
   </div>
 
   <div class="mode-tabs">
@@ -314,11 +315,11 @@ function updateFeeInfo() {
              : wan >= 500  ? '500～1000萬'
              : wan >= 200  ? '200～500萬'
              : '未滿200萬';
+  document.getElementById('premium-info').textContent = `實際投入 TWD ${fmt(effective)}`;
   document.getElementById('fee-info').innerHTML =
-    `實際投入 TWD ${fmt(effective)}` +
+    `未滿200萬 5%｜200～500萬 4%<br>500～1000萬 3%｜1000萬以上 2%` +
     `<div style="color:#86868b;font-weight:400;margin-top:4px;">` +
-    `手續費級距：未滿200萬 5%｜200～500萬 4%｜500～1000萬 3%｜1000萬以上 2%　` +
-    `（目前保費 ${wan} 萬 屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%）` +
+    `目前屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%` +
     `</div>`;
 }
 
