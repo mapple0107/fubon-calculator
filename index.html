@@ -312,12 +312,12 @@ function updateFeeInfo() {
   const rate = (parseFloat(document.getElementById('feeRatePct').value) || 0) / 100;
   const effective = wan * 10000 * (1 - rate);
   const tier = wan >= 1000 ? '1000萬以上'
-             : wan >= 500  ? '500～1000萬'
-             : wan >= 200  ? '200～500萬'
+             : wan >= 500  ? '500～999萬'
+             : wan >= 200  ? '200～499萬'
              : '未滿200萬';
   document.getElementById('premium-info').textContent = `實際投入 TWD ${fmt(effective)}`;
   document.getElementById('fee-info').innerHTML =
-    `未滿200萬 5%｜200～500萬 4%<br>500～1000萬 3%｜1000萬以上 2%` +
+    `未滿200萬 5%｜200～499萬 4%<br>500～999萬 3%｜1000萬以上 2%` +
     `<div style="color:#86868b;font-weight:400;margin-top:4px;">` +
     `目前屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%` +
     `</div>`;
