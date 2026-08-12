@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定期定額計算機</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #eef4fb 0%, #f7f9fc 40%, #f5f5f7 100%);
+    color: #1d1d1f; min-height: 100vh; padding: 2.5rem 1rem;
+    font-size: 18px;
+  }
+  .container { width: 70%; max-width: 1100px; margin: 0 auto; zoom: 1.4; }
+  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em; }
+  .subtitle { font-size: 14px; color: #86868b; margin-bottom: 2.5rem; }
+  .nav-cards { display:flex; gap:12px; margin-bottom:1.5rem; }
+  .nav-card {
+    flex:1; background:#fff; border-radius:18px; padding:14px 16px;
+    display:flex; align-items:center; gap:12px; text-decoration:none; color:#1d1d1f;
+    box-shadow:0 4px 14px rgba(0,0,0,0.04); border:1.5px solid transparent; transition:all .15s;
+  }
+  .nav-card:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,0.08); }
+  .nav-card.active { border-color:#0071e3; background:linear-gradient(135deg,#eef6ff,#f5faff); }
+  .nav-icon {
+    width:40px; height:40px; border-radius:12px; display:flex; align-items:center;
+    justify-content:center; font-size:20px; background:#eef6ff; flex-shrink:0;
+  }
+  .nav-card.active .nav-icon { background:#0071e3; }
+  .nav-title { font-size:14px; font-weight:700; }
+  .nav-sub { font-size:11px; color:#86868b; }
+  .card {
+    background: #fff; border-radius: 22px; padding: 1.75rem; margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03);
+  }
+  .card h2 {
+    font-size: 12px; font-weight: 700; color: #86868b; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f0f0f2;
+  }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .grid3 .input-wrap input { min-width: 0; width: 100%; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; color: #86868b; font-weight: 500; }
+  .input-wrap { display: flex; align-items: center; gap: 6px; }
+  .input-wrap input {
+    font-size: 16px; font-weight: 600; padding: 11px 13px; border-radius: 12px;
+    border: 1px solid #e5e5ea; background: #f9f9fb; color: #1d1d1f; flex: 1;
+    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .input-wrap input:focus { outline: none; border-color: #0071e3; background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.08); }
+  .input-wrap .unit { font-size: 13px; color: #86868b; white-space: nowrap; }
+  .calc-btn {
+    width: 100%; padding: 15px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, #0071e3, #0090ff);
+    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px;
+    box-shadow: 0 6px 16px rgba(0,113,227,0.25); transition: all 0.15s;
+  }
+  .calc-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,113,227,0.32); }
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  .metric {
+    background: linear-gradient(135deg, #eef6ff, #f5faff); border-radius: 16px;
+    padding: 16px 14px; border: 1px solid #e0eeff; text-align: center;
+  }
+  .metric .m-label { font-size: 12px; color: #0071e3; margin-bottom: 6px; font-weight: 600; }
+  .metric .m-val {
+    font-size: 22px; font-weight: 800; color: #0071e3; letter-spacing: -0.02em;
+    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 12px; font-size: 12px; color: #86868b; font-weight: 700; border-bottom: 2px solid #f0f0f2; }
+  td {
+    padding: 12px 10px; border-bottom: 1px solid #f5f5f7;
+    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr.sum-row { background: #eef6ff; font-weight: 700; }
+  .results { display: none; }
+  .results.show { display: block; }
+  @media (max-width: 500px) { .grid3, .metric-grid { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom: 2.5rem; text-align:left;">
+    <img src="avatar.png" alt="頭像" style="width:100px; height:100px; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.15); flex-shrink:0;">
+    <div>
+      <h1 style="margin-bottom:2px; font-size:2.6rem;">定期定額計算機</h1>
+      <p class="subtitle" style="margin-bottom:0;">複利累積試算</p>
+    </div>
+  </div>
+
+  <div class="nav-cards">
+    <a href="index.html" class="nav-card">
+      <div class="nav-icon">💰</div>
+      <div><div class="nav-title">配息計算機</div><div class="nav-sub">VCCT 月配息試算</div></div>
+    </a>
+    <a href="dca.html" class="nav-card active">
+      <div class="nav-icon">📈</div>
+      <div><div class="nav-title">定期定額</div><div class="nav-sub">複利累積試算</div></div>
+    </a>
+  </div>
+
+  <div class="card">
+    <h2>投資設定</h2>
+    <div class="field" style="margin-bottom:16px;">
+      <label>參考基金績效（選填）</label>
+      <select id="dcaFundSelect" onchange="onFundSelectChange()">
+        <option value="">手動輸入年化報酬率</option>
+        <option value="DSE11">DSE11｜安聯台灣科技證券投資信託基金</option>
+      </select>
+    </div>
+    <div id="dcaFundChart" style="display:none; margin-bottom:16px;"></div>
+    <div class="grid3">
+      <div class="field">
+        <label>每月投入金額</label>
+        <div class="input-wrap">
+          <input type="number" id="dcaMonthly" value="10000" step="1000">
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>預期年化報酬率</label>
+        <div class="input-wrap">
+          <input type="number" id="dcaRate" value="6" step="0.1">
+          <span class="unit">%</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>投資年期</label>
+        <div class="input-wrap">
+          <input type="number" id="dcaYears" value="10" step="1">
+          <span class="unit">年</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="calc-btn" onclick="calcDca()">計算定期定額</button>
+
+  <div class="results card" id="dca-results" style="margin-top:1.25rem;">
+    <h2>試算結果</h2>
+    <div class="metric-grid" id="dca-metrics"></div>
+    <table>
+      <thead><tr><th>年度</th><th>累積投入</th><th>預估價值</th><th>累積獲利</th></tr></thead>
+      <tbody id="dca-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const FUND_PERFORMANCE = {
+  DSE11: {
+    label: "DSE11｜安聯台灣科技證券投資信託基金",
+    inceptionDate: "2001-04-03",
+    cumulativeReturnSinceInception: 8235.10,
+    annualReturns: [
+      {y:2016, r:26.79}, {y:2017, r:41.09}, {y:2018, r:0.29},
+      {y:2019, r:56.27}, {y:2020, r:37.04}, {y:2021, r:67.98},
+      {y:2022, r:-32.11},{y:2023, r:72.47}, {y:2024, r:32.57},
+      {y:2025, r:69.05}
+    ]
+  }
+};
+
+function calcCAGR(cumPct, inceptionDateStr) {
+  const inception = new Date(inceptionDateStr);
+  const now = new Date();
+  const years = (now - inception) / (1000*60*60*24*365.25);
+  const totalMultiplier = 1 + cumPct / 100;
+  return (Math.pow(totalMultiplier, 1/years) - 1) * 100;
+}
+
+function renderFundChart(key) {
+  const fund = FUND_PERFORMANCE[key];
+  const box = document.getElementById('dcaFundChart');
+  if (!fund) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  const monthlyInvest = 10000;
+  let principal = 0, value = 0;
+  const points = [];
+  fund.annualReturns.forEach(yr => {
+    const monthlyRate = Math.pow(1 + yr.r / 100, 1/12) - 1;
+    for (let m = 0; m < 12; m++) {
+      value = value * (1 + monthlyRate) + monthlyInvest;
+      principal += monthlyInvest;
+    }
+    points.push({ year: yr.y, principal, value });
+  });
+
+  const maxVal = Math.max(...points.map(p => p.value));
+  const w = 600, h = 260, padTop = 20, padBottom = 30, padLeft = 10, padRight = 10;
+  const plotH = h - padTop - padBottom;
+  const n = points.length;
+
+  const toXY = (i, val) => {
+    const x = padLeft + (i / (n - 1)) * (w - padLeft - padRight);
+    const y = padTop + plotH - (val / maxVal) * plotH;
+    return [x, y];
+  };
+
+  // 平滑曲線：用簡單的三次貝茲近似 (Catmull-Rom 轉換)
+  function smoothPath(pts) {
+    if (pts.length < 3) return `M ${pts.map(p=>p.join(',')).join(' L ')}`;
+    let d = `M ${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i === 0 ? i : i - 1];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`;
+    }
+    return d;
+  }
+
+  const valuePts = points.map((p, i) => toXY(i, p.value));
+  const principalPts = points.map((p, i) => toXY(i, p.principal));
+  const valuePath = smoothPath(valuePts);
+  const principalPath = smoothPath(principalPts);
+  const lastV = valuePts[valuePts.length - 1];
+  const areaPath = `${valuePath} L ${lastV[0]},${padTop+plotH} L ${valuePts[0][0]},${padTop+plotH} Z`;
+
+  const finalPrincipal = points[points.length-1].principal;
+  const finalValue = points[points.length-1].value;
+  const cagr = calcCAGR(fund.cumulativeReturnSinceInception, fund.inceptionDate);
+
+  const yearLabels = points.map((p, i) => {
+    const x = padLeft + (i / (n - 1)) * (w - padLeft - padRight);
+    return `<text x="${x}" y="${h-8}" font-size="10" fill="#86868b" text-anchor="middle">${p.year}</text>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div style="background:linear-gradient(135deg,#f4f8ff,#fbfcff); border-radius:16px; padding:18px 20px; border:1px solid #e8f0ff;">
+      <div style="font-size:13px; font-weight:700; color:#1d1d1f; margin-bottom:2px;">近10年模擬定期定額累積走勢</div>
+      <div style="font-size:11px; color:#a0a0a5; margin-bottom:12px;">每月投入 ${fmt(monthlyInvest)} 元｜依年度實際報酬率換算，僅供參考，過去績效不代表未來表現</div>
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <svg viewBox="0 0 ${w} ${h}" style="flex:1; min-width:280px; height:220px;">
+          <defs>
+            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0071e3" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#0071e3" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <path d="${areaPath}" fill="url(#areaGrad)"></path>
+          <path d="${valuePath}" fill="none" stroke="#0071e3" stroke-width="2.5" stroke-linecap="round"></path>
+          <path d="${principalPath}" fill="none" stroke="#c7c7cc" stroke-width="1.5" stroke-dasharray="4,3"></path>
+          ${yearLabels}
+        </svg>
+        <div style="min-width:150px; display:flex; flex-direction:column; gap:14px;">
+          <div>
+            <div style="font-size:11px; color:#86868b; margin-bottom:2px;">累積金額</div>
+            <div style="font-size:22px; font-weight:800; color:#0071e3; font-family:'SF Mono',Menlo,monospace;">${fmt(finalValue)}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; color:#86868b; margin-bottom:2px;">投入本金</div>
+            <div style="font-size:16px; font-weight:700; color:#8a8a8e; font-family:'SF Mono',Menlo,monospace;">${fmt(finalPrincipal)}</div>
+          </div>
+          <div>
+            <div style="font-size:11px; color:#86868b; margin-bottom:2px;">CAGR</div>
+            <div style="font-size:16px; font-weight:700; color:#1a8a3c; font-family:'SF Mono',Menlo,monospace;">${cagr.toFixed(2)}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  box.style.display = 'block';
+}
+
+function onFundSelectChange() {
+  const key = document.getElementById('dcaFundSelect').value;
+  renderFundChart(key);
+  const rateInput = document.getElementById('dcaRate');
+  if (key && FUND_PERFORMANCE[key]) {
+    const fund = FUND_PERFORMANCE[key];
+    const cagr = calcCAGR(fund.cumulativeReturnSinceInception, fund.inceptionDate);
+    rateInput.value = cagr.toFixed(2);
+  }
+}
+
+function fmt(n, dec=0) { return Math.round(n).toLocaleString('zh-TW',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+
+function calcDca() {
+  const monthly = parseFloat(document.getElementById('dcaMonthly').value) || 0;
+  const annualRate = parseFloat(document.getElementById('dcaRate').value) || 0;
+  const years = parseInt(document.getElementById('dcaYears').value) || 0;
+  const monthlyRate = annualRate / 100 / 12;
+
+  const tbody = document.getElementById('dca-table');
+  tbody.innerHTML = '';
+  let totalInvested = 0, value = 0;
+
+  for (let y = 1; y <= years; y++) {
+    for (let m = 0; m < 12; m++) {
+      value = value * (1 + monthlyRate) + monthly;
+      totalInvested += monthly;
+    }
+    const profit = value - totalInvested;
+    tbody.innerHTML += `<tr><td>第 ${y} 年</td><td>${fmt(totalInvested)}</td><td><b>${fmt(value)}</b></td><td style="color:${profit>=0?'#1a8a3c':'#d0392b'}">${fmt(profit)}</td></tr>`;
+  }
+
+  const totalProfit = value - totalInvested;
+  const roi = totalInvested > 0 ? (totalProfit / totalInvested * 100) : 0;
+
+  document.getElementById('dca-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">💵 總投入金額</div><div class="m-val">${fmt(totalInvested)}</div></div>
+    <div class="metric"><div class="m-label">📈 預估累積金額</div><div class="m-val">${fmt(value)}</div></div>
+    <div class="metric"><div class="m-label">💰 總獲利</div><div class="m-val">${fmt(totalProfit)}（${roi.toFixed(1)}%）</div></div>
+  `;
+
+  document.getElementById('dca-results').classList.add('show');
+  document.getElementById('dca-results').scrollIntoView({behavior:'smooth'});
+}
+
+</script>
+</body>
+</html>
