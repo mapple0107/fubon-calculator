@@ -231,11 +231,11 @@
   </div>
 
   <div class="mode-tabs">
-    <button class="mode-tab active" id="tab-alloc"   onclick="switchMode('alloc')">📊 配置試算</button>
+    <button class="mode-tab active" id="tab-alloc"   onclick="switchMode('alloc')">📊 基金組合試算</button>
     <button class="mode-tab"        id="tab-compare" onclick="switchMode('compare')">📋 基金資訊</button>
   </div>
 
-  <!-- 配置試算 -->
+  <!-- 基金組合試算 -->
   <div id="section-alloc" class="section active">
     <div class="card">
       <h2>基金配置</h2>
@@ -244,9 +244,9 @@
       <button class="add-btn" onclick="addAllocFund()">＋ 新增基金</button>
       <div class="warn" id="alloc-warn"></div>
     </div>
-    <button class="calc-btn" onclick="calcAlloc()">計算配置試算</button>
+    <button class="calc-btn" onclick="calcAlloc()">計算基金組合試算</button>
     <div class="results card" id="alloc-results" style="margin-top:1.25rem;">
-      <h2>配置試算結果</h2>
+      <h2>基金組合試算結果</h2>
       <div class="metric-grid" id="alloc-metrics"></div>
       <table>
         <thead><tr><th>排名</th><th>基金</th><th>配置</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
