@@ -231,7 +231,7 @@
 
   <div class="mode-tabs">
     <button class="mode-tab active" id="tab-alloc"   onclick="switchMode('alloc')">📊 配置試算</button>
-    <button class="mode-tab"        id="tab-compare" onclick="switchMode('compare')">📈 基金比較</button>
+    <button class="mode-tab"        id="tab-compare" onclick="switchMode('compare')">📋 基金資訊</button>
   </div>
 
   <!-- 配置試算 -->
@@ -255,17 +255,10 @@
     </div>
   </div>
 
-  <!-- 基金比較 -->
+  <!-- 基金資訊 -->
   <div id="section-compare" class="section">
-    <div class="card">
-      <h2>比較基金</h2>
-      <div id="compare-funds"></div>
-      <button class="add-btn" onclick="addCompareFund()">＋ 新增基金</button>
-      <div class="warn" id="compare-warn"></div>
-    </div>
-    <button class="calc-btn" onclick="calcCompare()">計算並比較</button>
-    <div class="results card" id="compare-results" style="margin-top:1.25rem;">
-      <h2>基金比較結果</h2>
+    <div class="results card show" id="compare-results" style="margin-top:0;">
+      <h2>基金資訊</h2>
       <div class="metric-grid" id="compare-metrics"></div>
       <table>
         <thead><tr><th>排名</th><th>基金</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
@@ -304,11 +297,13 @@ function onPremiumChange() {
   const wan = parseFloat(document.getElementById('premium').value) || 0;
   document.getElementById('feeRatePct').value = getDefaultFeeRate(wan);
   updateFeeInfo();
+  calcCompare();
 }
 
 // 手動修改手續費%時：直接採用手動輸入的值，不覆蓋
 function onFeeManualChange() {
   updateFeeInfo();
+  calcCompare();
 }
 
 function updateFeeInfo() {
@@ -340,6 +335,7 @@ async function fetchLiveRate() {
       const mm = String(now.getMonth()+1).padStart(2,'0');
       const dd = String(now.getDate()).padStart(2,'0');
       info.textContent = `${mm}/${dd} 匯率 ${twd.toFixed(3)}`;
+      calcCompare();
     } else {
       info.textContent = '無法取得即時匯率，請手動輸入（點擊重試）';
     }
@@ -532,15 +528,12 @@ function calcCompare() {
   const prem = wan * 10000;
   const rate = getFeeRate(wan);
   const usdR = parseFloat(document.getElementById('usdRate').value) || 0;
-  const warn = document.getElementById('compare-warn');
-  if (!compareOrder.length) { showWarn(warn,'請新增至少一檔基金。'); return; }
-  warn.style.display='none';
+  if (!usdR) return;
 
   const eff = prem*(1-rate);
   const results = [];
-  for (const id of compareOrder) {
-    const {name,nav,dist} = getFundData(id);
-    if (!nav||!dist) { showWarn(warn,`「${name}」淨值或分配金額未填寫。`); return; }
+  for (const f of PRESET_FUNDS) {
+    const {name,nav,dist} = f;
     const units = eff/usdR/nav;
     const mTwd = units*dist*usdR;
     const yTwd = mTwd*12;
@@ -563,15 +556,13 @@ function calcCompare() {
   `;
   document.getElementById('compare-summary').textContent=
     `相同保費 ${wan} 萬（手續費 ${(rate*100).toFixed(1)}%，實際投入 TWD ${fmt(Math.round(eff))}）下各基金每月配息差異`;
-  document.getElementById('compare-results').classList.add('show');
-  document.getElementById('compare-results').scrollIntoView({behavior:'smooth'});
 }
 
-// 預設各載入 1 檔
+// 預設載入
 addAllocFund();
-addCompareFund();
 onPremiumChange();
 fetchLiveRate();
+calcCompare();
 </script>
 </body>
 </html>
