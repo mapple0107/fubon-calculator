@@ -33,29 +33,25 @@
   .main p.desc { font-size: 15px; color: #64748b; margin-bottom: 44px; }
 
   /* Tool cards */
-  .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; text-align: left; margin-bottom: 56px; }
-  .tool-card { background: #fff; border-radius: 22px; padding: 30px; box-shadow: 0 20px 45px -20px rgba(15,23,42,0.15); border: 1px solid #f1f5f9; }
-  .tool-card-head { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .section-title { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 28px; }
+  .section-title span { font-size: 22px; font-weight: 800; color: #0f172a; white-space: nowrap; }
+  .section-title .line { flex: 1; max-width: 120px; height: 1px; background: linear-gradient(to right, transparent, #cbd5e1); }
+  .section-title .line.right { background: linear-gradient(to left, transparent, #cbd5e1); }
+  .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; text-align: left; margin-bottom: 56px; }
+  .tool-card { display: flex; align-items: center; gap: 18px; background: #fff; border-radius: 18px; padding: 22px 26px; box-shadow: 0 8px 24px -12px rgba(15,23,42,0.10); border: 1px solid #f1f5f9; }
   .tool-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
   .tool-icon.blue { background: #e8f0ff; color: #2563eb; }
   .tool-icon.teal { background: #e3faf5; color: #0d9488; }
-  .tool-card-head h3 { font-size: 19px; font-weight: 800; color: #0f172a; margin-bottom: 3px; }
-  .tool-card-head p { font-size: 13px; color: #94a3b8; }
-
-  .field-row { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 12px; padding: 13px 16px; margin-bottom: 10px; font-size: 14px; }
-  .field-row .fk { display: flex; align-items: center; gap: 8px; color: #64748b; }
-  .field-row .fv { font-weight: 700; color: #0f172a; }
-
-  .card-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 700; color: #fff; margin: 18px 0 14px; }
-  .card-btn.blue { background: #2563eb; }
-  .card-btn.blue:hover { background: #1d4ed8; }
-  .card-btn.teal { background: #0d9488; }
-  .card-btn.teal:hover { background: #0b7d73; }
-
-  .result-row { display: flex; align-items: center; justify-content: space-between; border-radius: 12px; padding: 14px 16px; font-size: 14px; font-weight: 600; }
-  .result-row.blue { background: #eef4ff; color: #1d4ed8; }
-  .result-row.teal { background: #e3faf5; color: #0b7d73; }
-  .result-row .rv { font-size: 20px; font-weight: 800; }
+  .tool-info { flex: 1; }
+  .tool-info h3 { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 3px; }
+  .tool-info p { font-size: 13px; color: #94a3b8; }
+  .tool-go { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+  .tool-go .circle { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
+  .tool-go .circle.blue { background: #2563eb; }
+  .tool-go .circle.teal { background: #0d9488; }
+  .tool-go span { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .tool-go span.blue { color: #2563eb; }
+  .tool-go span.teal { color: #0d9488; }
 
   /* Feature strip */
   .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 900px; margin: 0 auto 60px; text-align: center; }
@@ -110,36 +106,36 @@
     <h1>選擇工具，開始你的理財試算</h1>
     <p class="desc">用簡單的數字，看見每月現金流與長期累積成果。</p>
 
-    <div class="tools-grid">
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <div class="tool-icon blue">🧮</div>
-          <div>
-            <h3>配息計算機</h3>
-            <p>快速估算每月現金流</p>
-          </div>
-        </div>
-        <div class="field-row"><div class="fk">💰 保費</div><div class="fv">200 萬元</div></div>
-        <div class="field-row"><div class="fk">% 手續費</div><div class="fv">4 %</div></div>
-        <div class="field-row"><div class="fk">↻ 美元匯率</div><div class="fv">32.200</div></div>
-        <a class="card-btn blue" href="calculator.html">開始配息試算 ›</a>
-        <div class="result-row blue"><span>💲 預估每月配息</span><span class="rv">TWD 24,000</span></div>
-      </div>
+    <div class="section-title">
+      <div class="line"></div>
+      <span>選擇你要使用的工具</span>
+      <div class="line right"></div>
+    </div>
 
-      <div class="tool-card">
-        <div class="tool-card-head">
-          <div class="tool-icon teal">📈</div>
-          <div>
-            <h3>定期定額</h3>
-            <p>試算時間與複利的累積效果</p>
-          </div>
+    <div class="tools-grid">
+      <a class="tool-card" href="calculator.html">
+        <div class="tool-icon blue">🧮</div>
+        <div class="tool-info">
+          <h3>配息計算機</h3>
+          <p>快速估算每月現金流</p>
         </div>
-        <div class="field-row"><div class="fk">🏦 每月投入</div><div class="fv">10,000 元</div></div>
-        <div class="field-row"><div class="fk">% 預計年化報酬</div><div class="fv">6 %</div></div>
-        <div class="field-row"><div class="fk">📅 投資期間</div><div class="fv">20 年</div></div>
-        <a class="card-btn teal" href="dca.html">開始複利試算 ›</a>
-        <div class="result-row teal"><span>📈 預估累積成果</span><span class="rv">3,104,000 元</span></div>
-      </div>
+        <div class="tool-go">
+          <div class="circle blue">›</div>
+          <span class="blue">立即試算</span>
+        </div>
+      </a>
+
+      <a class="tool-card" href="dca.html">
+        <div class="tool-icon teal">📈</div>
+        <div class="tool-info">
+          <h3>定期定額</h3>
+          <p>看見時間與複利的力量</p>
+        </div>
+        <div class="tool-go">
+          <div class="circle teal">›</div>
+          <span class="teal">開始計算</span>
+        </div>
+      </a>
     </div>
 
     <div class="features">
