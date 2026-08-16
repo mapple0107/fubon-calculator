@@ -157,8 +157,8 @@
   tr.fund-row:hover { background: #f5f9ff; }
   .perf-arrow { display:inline-block; margin-left:4px; font-size:10px; color:#0071e3; transition: transform 0.2s; }
   .perf-detail td { padding: 0; border-bottom: 1px solid #f5f5f7; }
-  .perf-grid { display: flex; flex-wrap: nowrap; gap: 6px; padding: 14px 12px; background: #f9fafc; overflow-x: auto; }
-  .perf-item { flex: 1 1 0; min-width: 52px; text-align: center; }
+  .perf-grid { display: flex; flex-wrap: nowrap; gap: 10px; padding: 14px 12px; background: #f9fafc; }
+  .perf-item { flex: 0 0 auto; min-width: 56px; text-align: center; }
   .perf-item .p-label { font-size: 10.5px; color: #86868b; margin-bottom: 3px; white-space: nowrap; }
   .perf-item .p-val { font-size: 12px; font-weight: 700; white-space: nowrap; }
   .perf-empty { padding: 12px; font-size: 12px; color: #86868b; text-align: center; }
@@ -248,10 +248,12 @@
         <a href="https://invest.fubonlife.com.tw/index.html" target="_blank" rel="noopener" style="font-size:14px;color:#0071e3;font-weight:600;text-decoration:none;">🔗 富邦投資型網站</a>
       </div>
       <div class="metric-grid" id="compare-metrics"></div>
+      <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
       <table>
         <thead><tr><th>排名</th><th>基金</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
         <tbody id="compare-table"></tbody>
       </table>
+      </div>
       <div class="summary-row" id="compare-summary"></div>
       <div style="font-size:11px;color:#86868b;margin-top:8px;text-align:center;">點擊基金列可展開查看累積報酬率</div>
     </div>
