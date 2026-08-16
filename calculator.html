@@ -170,7 +170,10 @@
   }
   .section { display: none; }
   .section.active { display: block; }
-  @media (max-width: 500px) { .grid2, .metric-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 500px) {
+    .grid2, .metric-grid { grid-template-columns: 1fr 1fr; }
+    .metric-grid .metric:nth-child(3) { grid-column: 1 / -1; }
+  }
 </style>
 
 </head>
