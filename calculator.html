@@ -153,6 +153,15 @@
   tr:last-child td { border-bottom: none; }
   tr.sum-row { background: #eef6ff; font-weight: 700; border-radius: 10px; }
   tr.top-row { background: #fff9e6; font-weight: 700; }
+  tr.fund-row { cursor: pointer; }
+  tr.fund-row:hover { background: #f5f9ff; }
+  .perf-arrow { display:inline-block; margin-left:4px; font-size:10px; color:#0071e3; transition: transform 0.2s; }
+  .perf-detail td { padding: 0; border-bottom: 1px solid #f5f5f7; }
+  .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; padding: 14px 12px; background: #f9fafc; }
+  .perf-item { text-align: center; }
+  .perf-item .p-label { font-size: 11px; color: #86868b; margin-bottom: 3px; }
+  .perf-item .p-val { font-size: 13px; font-weight: 700; }
+  .perf-empty { padding: 12px; font-size: 12px; color: #86868b; text-align: center; }
   .warn { background: #fff6dd; border-radius: 12px; padding: 12px 16px; font-size: 13px; color: #8a6404; margin-top: 10px; display: none; font-weight: 500; }
   .summary-row {
     margin-top: 12px; font-size: 13px; padding: 12px 14px; background: #f7f7f9; border-radius: 12px; color: #3a3a3c; line-height: 1.5;
@@ -244,21 +253,24 @@
         <tbody id="compare-table"></tbody>
       </table>
       <div class="summary-row" id="compare-summary"></div>
+      <div style="font-size:11px;color:#86868b;margin-top:8px;text-align:center;">點擊基金列可展開查看累積報酬率</div>
     </div>
   </div>
 </div>
 
 <script>
 const PRESET_FUNDS = [
-  { name:"JFP11", label:"JFP11｜摩根多重收益基金",  nav:75.19,  dist:0.692 },
-  { name:"ACC3",  label:"ACC3｜聯博多元資產收益組合-AI類型",          nav:9.57,   dist:0.075 },
-  { name:"IGB5",  label:"IGB5｜景順環球高評級企業債券",    nav:6.9261,   dist:0.051 },
-  { name:"FRP4",  label:"FRP4｜富蘭克林穩定月收益",        nav:10.03,   dist:0.067 },
-  { name:"DSP5",  label:"DSP5｜安聯收益成長(美元)",        nav:8.7559,   dist:0.055 },
-  { name:"SCP6",  label:"SCP6｜施羅德環球收益成長",        nav:144.9425, dist:1.174071 },
-  { name:"ESC1",  label:"ESC1｜瀚亞多重收益B類型-美元",          nav:8.47,   dist:0.068749 },
-  { name:"MLE24", label:"MLE24｜貝萊德世界科技基金",       nav:21.45,  dist:0.153 },
+  { name:"JFP11", label:"JFP11｜摩根多重收益基金",  nav:75.19,  dist:0.692, perf:{} },
+  { name:"ACC3",  label:"ACC3｜聯博多元資產收益組合-AI類型",          nav:9.57,   dist:0.075, perf:{} },
+  { name:"IGB5",  label:"IGB5｜景順環球高評級企業債券",    nav:6.9261,   dist:0.051, perf:{} },
+  { name:"FRP4",  label:"FRP4｜富蘭克林穩定月收益",        nav:10.03,   dist:0.067, perf:{} },
+  { name:"DSP5",  label:"DSP5｜安聯收益成長(美元)",        nav:8.7559,   dist:0.055, perf:{} },
+  { name:"SCP6",  label:"SCP6｜施羅德環球收益成長",        nav:144.9425, dist:1.174071, perf:{} },
+  { name:"ESC1",  label:"ESC1｜瀚亞多重收益B類型-美元",          nav:8.47,   dist:0.068749, perf:{} },
+  { name:"MLE24", label:"MLE24｜貝萊德世界科技基金",       nav:21.45,  dist:0.153, perf:{} },
 ];
+
+const PERF_ORDER = ['一週','一個月','本月','本季','三個月','六個月','九個月','一年','二年','三年','五年'];
 
 let allocSeq = 0, compareSeq = 0;
 let allocOrder = [], compareOrder = [];
@@ -510,6 +522,31 @@ function calcAlloc() {
   document.getElementById('alloc-results').scrollIntoView({behavior:'smooth'});
 }
 
+function renderPerf(perf) {
+  if (!perf || !Object.keys(perf).length) {
+    return '<div class="perf-empty">尚無績效資料</div>';
+  }
+  let html = '<div class="perf-grid">';
+  PERF_ORDER.forEach(k => {
+    if (perf[k] === undefined || perf[k] === null || perf[k] === '') return;
+    const v = perf[k];
+    const num = parseFloat(String(v).replace('%',''));
+    const color = isNaN(num) ? '#1d1d1f' : (num > 0 ? '#d0392b' : num < 0 ? '#1a8a3c' : '#1d1d1f');
+    html += `<div class="perf-item"><div class="p-label">${k}</div><div class="p-val" style="color:${color};">${v}</div></div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function togglePerf(idx) {
+  const row = document.getElementById('perf-row-'+idx);
+  const arrow = document.getElementById('perf-arrow-'+idx);
+  if (!row) return;
+  const willShow = row.style.display === 'none';
+  row.style.display = willShow ? 'table-row' : 'none';
+  if (arrow) arrow.textContent = willShow ? '▲' : '▼';
+}
+
 function calcCompare() {
   const wan  = parseFloat(document.getElementById('premium').value) || 0;
   const prem = wan * 10000;
@@ -520,11 +557,11 @@ function calcCompare() {
   const eff = prem*(1-rate);
   const results = [];
   for (const f of PRESET_FUNDS) {
-    const {name,nav,dist} = f;
+    const {name,nav,dist,perf} = f;
     const units = eff/usdR/nav;
     const mTwd = units*dist*usdR;
     const yTwd = mTwd*12;
-    results.push({name,nav,dist,units,mTwd,yTwd,yieldR:(yTwd/eff)*100});
+    results.push({name,nav,dist,units,mTwd,yTwd,yieldR:(yTwd/eff)*100,perf});
   }
 
   results.sort((a,b)=>b.yieldR-a.yieldR);
@@ -532,7 +569,8 @@ function calcCompare() {
   const tbody=document.getElementById('compare-table');
   tbody.innerHTML='';
   results.forEach((r,i)=>{
-    tbody.innerHTML+=`<tr${i===0?' class="top-row"':''}><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
+    tbody.innerHTML+=`<tr class="fund-row${i===0?' top-row':''}" onclick="togglePerf(${i})"><td>${medals[i]||(i+1)+'.'}</td><td>${r.name} <span class="perf-arrow" id="perf-arrow-${i}">▼</span></td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
+    tbody.innerHTML+=`<tr class="perf-detail" id="perf-row-${i}" style="display:none;"><td colspan="8">${renderPerf(r.perf)}</td></tr>`;
   });
 
   const best=results[0], worst=results[results.length-1];
