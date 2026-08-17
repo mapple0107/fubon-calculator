@@ -130,7 +130,7 @@
   .calc-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,113,227,0.32); }
   .results { display: none; }
   .results.show { display: block; }
-  .metric-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 2rem; }
   .metric {
     background: linear-gradient(135deg, #eef6ff, #f5faff);
     border-radius: 16px; padding: 16px 14px; border: 1px solid #e0eeff;
@@ -155,7 +155,7 @@
   tr.top-row { background: #fff9e6; font-weight: 700; }
   tr.fund-row { cursor: pointer; }
   tr.fund-row:hover { background: #f5f9ff; }
-  .perf-arrow { display:inline-block; margin-left:4px; font-size:10px; color:#0071e3; transition: transform 0.2s; }
+  .perf-arrow { display:inline-block; margin-left:10px; font-size:16px; color:#0071e3; transition: transform 0.2s; vertical-align:middle; }
   .perf-detail td { padding: 0; border-bottom: 1px solid #f5f5f7; }
   .perf-grid { display: flex; flex-wrap: nowrap; gap: 10px; padding: 14px 12px; background: #f9fafc; }
   .perf-item { flex: 1 1 0; min-width: 56px; text-align: center; }
@@ -251,6 +251,9 @@
         <a href="https://invest.fubonlife.com.tw/index.html" target="_blank" rel="noopener" style="font-size:14px;color:#0071e3;font-weight:600;text-decoration:none;">🔗 富邦投資型網站</a>
       </div>
       <div class="metric-grid" id="compare-metrics"></div>
+      <div style="text-align:center;margin-bottom:1rem;">
+        <button id="perf-toggle-all-btn" onclick="toggleAllPerf()" style="padding:8px 20px;border-radius:20px;border:1.5px solid #0071e3;background:#eef6ff;color:#0071e3;font-size:13px;font-weight:700;cursor:pointer;">🔽 一鍵展開全部績效</button>
+      </div>
       <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
       <table>
         <thead><tr><th>排名</th><th>基金</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
@@ -550,6 +553,19 @@ function togglePerf(idx) {
   const willShow = row.style.display === 'none';
   row.style.display = willShow ? 'table-row' : 'none';
   if (arrow) arrow.textContent = willShow ? '▲' : '▼';
+}
+
+let allPerfExpanded = false;
+function toggleAllPerf() {
+  allPerfExpanded = !allPerfExpanded;
+  document.querySelectorAll('#compare-table .perf-detail').forEach(row => {
+    row.style.display = allPerfExpanded ? 'table-row' : 'none';
+  });
+  document.querySelectorAll('#compare-table .perf-arrow').forEach(arrow => {
+    arrow.textContent = allPerfExpanded ? '▲' : '▼';
+  });
+  const btn = document.getElementById('perf-toggle-all-btn');
+  if (btn) btn.textContent = allPerfExpanded ? '🔼 一鍵收合全部績效' : '🔽 一鍵展開全部績效';
 }
 
 function calcCompare() {
