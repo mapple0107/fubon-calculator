@@ -574,7 +574,7 @@ function calcCompare() {
   const tbody=document.getElementById('compare-table');
   tbody.innerHTML='';
   results.forEach((r,i)=>{
-    tbody.innerHTML+=`<tr class="fund-row${i===0?' top-row':''}" onclick="togglePerf(${i})"><td>${medals[i]||(i+1)+'.'}</td><td>${r.name} <span class="perf-arrow" id="perf-arrow-${i}">▼</span></td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
+    tbody.innerHTML+=`<tr class="fund-row${i===0?' top-row':''}" onclick="togglePerf(${i})"><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b> <span class="perf-arrow" id="perf-arrow-${i}">▼</span></td></tr>`;
     tbody.innerHTML+=`<tr class="perf-detail" id="perf-row-${i}" style="display:none;"><td colspan="8">${renderPerf(r.perf)}</td></tr>`;
   });
 
