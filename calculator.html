@@ -162,6 +162,11 @@
   .perf-item .p-label { font-size: 10.5px; color: #86868b; margin-bottom: 3px; white-space: nowrap; }
   .perf-item .p-val { font-size: 12px; font-weight: 700; white-space: nowrap; }
   .perf-empty { padding: 12px; font-size: 12px; color: #86868b; text-align: center; }
+  .combo-perf-card { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f0f0f2; }
+  .combo-perf-card h2 { border-bottom: none; padding-bottom: 0; margin-bottom: 2px; }
+  .combo-perf-note { font-size: 12px; color: #86868b; margin-bottom: 12px; }
+  .combo-perf-grid { display: flex; flex-wrap: wrap; gap: 14px 10px; background: #f9fafc; border-radius: 14px; padding: 14px 12px; }
+  .combo-perf-grid .perf-item { flex: 1 1 70px; min-width: 70px; }
   .warn { background: #fff6dd; border-radius: 12px; padding: 12px 16px; font-size: 13px; color: #8a6404; margin-top: 10px; display: none; font-weight: 500; }
   .summary-row {
     margin-top: 12px; font-size: 13px; padding: 12px 14px; background: #f7f7f9; border-radius: 12px; color: #3a3a3c; line-height: 1.5;
@@ -240,6 +245,11 @@
         <tbody id="alloc-table"></tbody>
       </table>
       <div class="summary-row" id="alloc-summary"></div>
+      <div class="combo-perf-card" id="alloc-perf" style="display:none;">
+        <h2>組合含息報酬</h2>
+        <div class="combo-perf-note">依配置比例加權，含息計算</div>
+        <div class="perf-grid combo-perf-grid" id="alloc-perf-grid"></div>
+      </div>
     </div>
   </div>
 
@@ -472,11 +482,49 @@ function getFundData(id) {
       name:  (document.getElementById('name-'+id)||{}).value || '基金'+id,
       nav:   parseFloat((document.getElementById('nav-'+id)||{}).value),
       dist:  parseFloat((document.getElementById('dist-'+id)||{}).value),
-      ratio
+      ratio,
+      perf: null
     };
   }
   const f = PRESET_FUNDS[parseInt(val)];
-  return { name: f.name, nav: f.nav, dist: f.dist, ratio };
+  return { name: f.name, nav: f.nav, dist: f.dist, ratio, perf: f.perf || null };
+}
+
+// 依配置比例加權組合各期間含息報酬率（跟基金資訊頁展開的個別基金績效用同一套 PERF_ORDER 排序）。
+// 只有在「所有」被選入的基金都有該期間的有效數值時才計算，缺資料（自訂基金、N/A）一律顯示為－。
+function computeComboPerf(items) {
+  if (!items.some(r => r.perf)) return {};
+  const totalRatio = items.reduce((s,r) => s + r.ratio, 0) || 100;
+  const combo = {};
+  PERF_ORDER.forEach(period => {
+    let sum = 0, ok = true;
+    items.forEach(r => {
+      const raw = r.perf ? r.perf[period] : undefined;
+      const v = raw == null ? NaN : parseFloat(String(raw).replace('%',''));
+      if (raw === undefined || raw === 'N/A' || isNaN(v)) { ok = false; return; }
+      sum += v * (r.ratio / totalRatio);
+    });
+    combo[period] = ok ? sum : null;
+  });
+  return combo;
+}
+
+function renderComboPerf(elId, gridId, items) {
+  const combo = computeComboPerf(items);
+  const periods = Object.keys(combo);
+  const card = document.getElementById(elId);
+  if (!periods.length) { card.style.display = 'none'; return; }
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = periods.map(p => {
+    const v = combo[p];
+    let color = '#c7c7cc', text = '－';
+    if (v !== null) {
+      color = v > 0 ? '#d0392b' : (v < 0 ? '#1a8a3c' : '#1d1d1f');
+      text = (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+    }
+    return `<div class="perf-item"><div class="p-label">${p}</div><div class="p-val" style="color:${color};">${text}</div></div>`;
+  }).join('');
+  card.style.display = 'block';
 }
 
 function showWarn(el, msg) { el.style.display='block'; el.textContent=msg; }
@@ -494,19 +542,21 @@ function calcAlloc() {
   allocOrder.forEach(id => { totalRatio += parseFloat((document.getElementById('ratio-'+id)||{}).value)||0; });
   if (Math.abs(totalRatio-100)>0.01) { showWarn(warn,`配置比例總和 ${totalRatio}%，需等於 100%。`); return; }
   warn.style.display='none';
+  document.getElementById('alloc-perf').style.display='none';
 
   const eff = prem*(1-rate);
   const results = [];
   for (const id of allocOrder) {
-    const {name,nav,dist,ratio} = getFundData(id);
+    const {name,nav,dist,ratio,perf} = getFundData(id);
     if (!nav||!dist) { showWarn(warn,`「${name}」淨值或分配金額未填寫。`); return; }
     if (!ratio)      { showWarn(warn,`「${name}」配置比例為 0。`); return; }
     const alloc = eff*(ratio/100);
     const units = alloc/usdR/nav;
     const mTwd  = units*dist*usdR;
     const yTwd  = mTwd*12;
-    results.push({name,nav,dist,ratio,units,mTwd,yTwd,yieldR:(yTwd/alloc)*100});
+    results.push({name,nav,dist,ratio,units,mTwd,yTwd,yieldR:(yTwd/alloc)*100,perf});
   }
+  renderComboPerf('alloc-perf', 'alloc-perf-grid', results);
 
   results.sort((a,b)=>b.yieldR-a.yieldR);
   const medals=['🥇','🥈','🥉'];
