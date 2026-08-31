@@ -111,7 +111,7 @@
         </div>
         <div class="field-row"><div class="fk">💰 保費</div><div class="fv">200 萬元</div></div>
         <div class="field-row"><div class="fk">% 手續費</div><div class="fv">4 %</div></div>
-        <div class="field-row"><div class="fk">↻ 美元匯率</div><div class="fv">32.200</div></div>
+        <div class="field-row"><div class="fk">↻ 美元匯率</div><div class="fv" id="home-usd-rate">32.200</div></div>
         <a class="card-btn blue" href="calculator.html">開始配息試算 ›</a>
         <div class="result-row blue"><span>💲 預估每月配息</span><span class="rv">TWD 15,000</span></div>
       </div>
@@ -133,6 +133,25 @@
     </div>
   </div>
 </div>
+
+<script>
+// 首頁配息計算機預覽卡片：抓取即時美元匯率取代靜態範例值，
+// 邏輯與 calculator.html 的 fetchLiveRate() 相同，失敗時保留原本的靜態範例值。
+(async function () {
+  const el = document.getElementById('home-usd-rate');
+  if (!el) return;
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    const twd = data.rates && data.rates.TWD;
+    if (twd) {
+      el.textContent = twd.toFixed(3);
+    }
+  } catch (e) {
+    // 抓取失敗時維持頁面原本顯示的範例匯率，不影響版面
+  }
+})();
+</script>
 
 </body>
 </html>
