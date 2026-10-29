@@ -154,6 +154,7 @@
   tr.sum-row { background: #eef6ff; font-weight: 700; border-radius: 10px; }
   tr.top-row { background: #fff9e6; font-weight: 700; }
   tr.fund-row { cursor: pointer; }
+  .col-twd { background: #f5f5f7; }
   tr.fund-row:hover { background: #f5f9ff; }
   .perf-arrow { display:inline-block; margin-left:10px; font-size:16px; color:#0071e3; transition: transform 0.2s; vertical-align:middle; position:relative; top:-3px; }
   .perf-detail td { padding: 0; border-bottom: 1px solid #f5f5f7; }
@@ -244,7 +245,7 @@
       <h2>基金組合試算結果</h2>
       <div class="metric-grid" id="alloc-metrics"></div>
       <table>
-        <thead><tr><th>排名</th><th>基金</th><th>配置</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(USD)</th><th>每月配息(TWD)</th><th>每年配息(USD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
+        <thead><tr><th>排名</th><th>基金</th><th>配置</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(USD)</th><th class="col-twd">每月配息(TWD)</th><th>每年配息(USD)</th><th class="col-twd">每年配息(TWD)</th><th>年化配息率</th></tr></thead>
         <tbody id="alloc-table"></tbody>
       </table>
       <div class="summary-row" id="alloc-summary"></div>
@@ -269,7 +270,7 @@
       </div>
       <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
       <table>
-        <thead><tr><th>排名</th><th>基金</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(USD)</th><th>每月配息(TWD)</th><th>每年配息(USD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
+        <thead><tr><th>排名</th><th>基金</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(USD)</th><th class="col-twd">每月配息(TWD)</th><th>每年配息(USD)</th><th class="col-twd">每年配息(TWD)</th><th>年化配息率</th></tr></thead>
         <tbody id="compare-table"></tbody>
       </table>
       </div>
@@ -570,9 +571,9 @@ function calcAlloc() {
   let sumM=0, sumMUsd=0, sumY=0, sumYUsd=0;
   results.forEach((r,i)=>{
     sumM+=r.mTwd; sumMUsd+=r.mUsd; sumY+=r.yTwd; sumYUsd+=r.yUsd;
-    tbody.innerHTML+=`<tr><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${r.ratio}%</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td>USD ${fmt(r.mUsd,2)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>USD ${fmt(r.yUsd,2)}</td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
+    tbody.innerHTML+=`<tr><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${r.ratio}%</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td>USD ${fmt(r.mUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(r.mTwd))}</td><td>USD ${fmt(r.yUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(r.yTwd))}</td><td>${r.yieldR.toFixed(2)}%</td></tr>`;
   });
-  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="3"></td><td>USD ${fmt(sumMUsd,2)}</td><td>TWD ${fmt(Math.round(sumM))}</td><td>USD ${fmt(sumYUsd,2)}</td><td>TWD ${fmt(Math.round(sumY))}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
+  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="3"></td><td>USD ${fmt(sumMUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(sumM))}</td><td>USD ${fmt(sumYUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(sumY))}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
 
   document.getElementById('alloc-metrics').innerHTML=`
     <div class="metric"><div class="m-label">💰 手續費率</div><div class="m-val">${(rate*100).toFixed(1)}%</div></div>
@@ -647,7 +648,7 @@ function calcCompare() {
   const tbody=document.getElementById('compare-table');
   tbody.innerHTML='';
   results.forEach((r,i)=>{
-    tbody.innerHTML+=`<tr class="fund-row${i===0?' top-row':''}" onclick="togglePerf(${i})"><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td>USD ${fmt(r.mUsd,2)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>USD ${fmt(r.yUsd,2)}</td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b> <span class="perf-arrow" id="perf-arrow-${i}">▼</span></td></tr>`;
+    tbody.innerHTML+=`<tr class="fund-row${i===0?' top-row':''}" onclick="togglePerf(${i})"><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td>USD ${fmt(r.mUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(r.mTwd))}</td><td>USD ${fmt(r.yUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(r.yTwd))}</td><td>${r.yieldR.toFixed(2)}% <span class="perf-arrow" id="perf-arrow-${i}">▼</span></td></tr>`;
     tbody.innerHTML+=`<tr class="perf-detail" id="perf-row-${i}" style="display:none;"><td colspan="10">${renderPerf(r.perf)}</td></tr>`;
   });
 
