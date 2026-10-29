@@ -357,7 +357,7 @@ function updateFeeInfo() {
     document.getElementById('premium-info').textContent = `實際投入 USD ${fmt(effective,2)}`;
     document.getElementById('fee-info').innerHTML =
       `未滿66,600美元 5%<br>66,600～166,599美元 4%<br>166,600～333,299美元 3%<br>333,300美元以上 2%` +
-      `<div style="color:#86868b;font-weight:400;margin-top:4px;">` +
+      `<div style="color:#86868b;font-weight:400;margin-top:4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="目前屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%">` +
       `目前屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%` +
       `</div>`;
     return;
@@ -370,7 +370,7 @@ function updateFeeInfo() {
   document.getElementById('premium-info').textContent = `實際投入 TWD ${fmt(effective)}`;
   document.getElementById('fee-info').innerHTML =
     `未滿200萬 5%｜200～499萬 4%<br>500～999萬 3%｜1000萬以上 2%` +
-    `<div style="color:#86868b;font-weight:400;margin-top:4px;">` +
+    `<div style="color:#86868b;font-weight:400;margin-top:4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="目前屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%">` +
     `目前屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%` +
     `</div>`;
 }
