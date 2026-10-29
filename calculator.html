@@ -198,12 +198,19 @@
 
   <div class="card">
     <h2>基本設定</h2>
+    <div class="field" style="margin-bottom:14px;">
+      <label>保單類型</label>
+      <div class="mode-tabs" style="margin-bottom:0;">
+        <button class="mode-tab active" id="tab-vcct" onclick="switchProduct('VCCT')">VCCT（台幣）</button>
+        <button class="mode-tab" id="tab-vccf" onclick="switchProduct('VCCF')">VCCF（美元）</button>
+      </div>
+    </div>
     <div class="grid2 basic-settings-grid" style="grid-template-columns: 1fr 1fr 1fr;">
       <div class="field">
         <label>保費</label>
         <div class="input-wrap">
           <input type="number" id="premium" value="200" step="1" oninput="onPremiumChange()">
-          <span class="unit">萬元</span>
+          <span class="unit" id="premium-unit">萬元</span>
         </div>
         <div class="fee-info" id="premium-info" style="margin-top:6px;"></div>
       </div>
@@ -296,9 +303,26 @@ const PERF_ORDER = ['一週','一個月','本月','本季','三個月','六個�
 
 let allocSeq = 0, compareSeq = 0;
 let allocOrder = [], compareOrder = [];
+let productType = 'VCCT'; // 'VCCT'（台幣保費）或 'VCCF'（美元保費）
+
+// 切換保單類型：VCCT（台幣）／VCCF（美元，VCCT的美元版）
+function switchProduct(type) {
+  productType = type;
+  document.getElementById('tab-vcct').classList.toggle('active', type==='VCCT');
+  document.getElementById('tab-vccf').classList.toggle('active', type==='VCCF');
+  document.getElementById('premium-unit').textContent = type==='VCCF' ? '萬美元' : '萬元';
+  onPremiumChange();
+}
 
 // 內部預設級距（不顯示在畫面上，只用來自動帶出手續費%）
 function getDefaultFeeRate(wan) {
+  if (productType === 'VCCF') {
+    const usd = wan * 10000; // 萬美元 → 實際美元
+    if (usd >= 333300) return 2;
+    if (usd >= 166600) return 3;
+    if (usd >= 66600)  return 4;
+    return 5;
+  }
   if (wan >= 1000) return 2;
   if (wan >= 500)  return 3;
   if (wan >= 200)  return 4;
@@ -322,6 +346,21 @@ function onFeeManualChange() {
 function updateFeeInfo() {
   const wan = parseFloat(document.getElementById('premium').value) || 0;
   const rate = (parseFloat(document.getElementById('feeRatePct').value) || 0) / 100;
+  if (productType === 'VCCF') {
+    const usdAmt = wan * 10000;
+    const effective = usdAmt * (1 - rate);
+    const tier = usdAmt >= 333300 ? '333,300美元以上'
+               : usdAmt >= 166600 ? '166,600～333,299美元'
+               : usdAmt >= 66600  ? '66,600～166,599美元'
+               : '未滿66,600美元';
+    document.getElementById('premium-info').textContent = `實際投入 USD ${fmt(effective,2)}`;
+    document.getElementById('fee-info').innerHTML =
+      `未滿66,600美元 5%｜66,600～166,599美元 4%<br>166,600～333,299美元 3%｜333,300美元以上 2%` +
+      `<div style="color:#86868b;font-weight:400;margin-top:4px;">` +
+      `目前屬於「${tier}」，套用 ${(rate*100).toFixed(1)}%` +
+      `</div>`;
+    return;
+  }
   const effective = wan * 10000 * (1 - rate);
   const tier = wan >= 1000 ? '1000萬以上'
              : wan >= 500  ? '500～999萬'
@@ -536,7 +575,6 @@ function fmt(n, dec=0) { return n.toLocaleString('zh-TW',{minimumFractionDigits:
 
 function calcAlloc() {
   const wan  = parseFloat(document.getElementById('premium').value) || 0;
-  const prem = wan * 10000;
   const rate = getFeeRate(wan);
   const usdR = parseFloat(document.getElementById('usdRate').value) || 0;
   const warn = document.getElementById('alloc-warn');
@@ -548,19 +586,25 @@ function calcAlloc() {
   warn.style.display='none';
   document.getElementById('alloc-perf').style.display='none';
 
-  const eff = prem*(1-rate);
+  const isUsd = productType === 'VCCF';
+  const premNative = wan * 10000;               // VCCT: TWD保費｜VCCF: USD保費
+  const effNative  = premNative*(1-rate);        // 保費幣別下的實際投入金額
+  const effUsd     = isUsd ? effNative : effNative/usdR; // 換算為美元，供買基金單位數用
+
   const results = [];
   for (const id of allocOrder) {
     const {name,nav,dist,ratio,perf} = getFundData(id);
     if (!nav||!dist) { showWarn(warn,`「${name}」淨值或分配金額未填寫。`); return; }
     if (!ratio)      { showWarn(warn,`「${name}」配置比例為 0。`); return; }
-    const alloc = eff*(ratio/100);
-    const units = alloc/usdR/nav;
+    const allocUsd    = effUsd*(ratio/100);
+    const allocNative = effNative*(ratio/100);
+    const units = allocUsd/nav;
     const mUsd  = units*dist;
     const mTwd  = mUsd*usdR;
     const yUsd  = mUsd*12;
     const yTwd  = mTwd*12;
-    results.push({name,nav,dist,ratio,units,mTwd,mUsd,yTwd,yUsd,yieldR:(yTwd/alloc)*100,perf});
+    const yNative = isUsd ? yUsd : yTwd;
+    results.push({name,nav,dist,ratio,units,mTwd,mUsd,yTwd,yUsd,yieldR:(yNative/allocNative)*100,perf});
   }
   renderComboPerf('alloc-perf', 'alloc-perf-grid', results);
 
@@ -573,15 +617,17 @@ function calcAlloc() {
     sumM+=r.mTwd; sumMUsd+=r.mUsd; sumY+=r.yTwd; sumYUsd+=r.yUsd;
     tbody.innerHTML+=`<tr><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${r.ratio}%</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td>USD ${fmt(r.mUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(r.mTwd))}</td><td>USD ${fmt(r.yUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(r.yTwd))}</td><td>${r.yieldR.toFixed(2)}%</td></tr>`;
   });
-  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="3"></td><td>USD ${fmt(sumMUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(sumM))}</td><td>USD ${fmt(sumYUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(sumY))}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
+  const sumYNative = isUsd ? sumYUsd : sumY;
+  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="3"></td><td>USD ${fmt(sumMUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(sumM))}</td><td>USD ${fmt(sumYUsd,2)}</td><td class="col-twd">TWD ${fmt(Math.round(sumY))}</td><td>${((sumYNative/effNative)*100).toFixed(2)}%</td></tr>`;
 
   document.getElementById('alloc-metrics').innerHTML=`
     <div class="metric"><div class="m-label">💰 手續費率</div><div class="m-val">${(rate*100).toFixed(1)}%</div></div>
-    <div class="metric"><div class="m-label">📅 每月總配息</div><div class="m-val">TWD ${fmt(Math.round(sumM))}</div></div>
-    <div class="metric"><div class="m-label">📈 綜合年化報酬</div><div class="m-val">${((sumY/eff)*100).toFixed(2)}%</div></div>
+    <div class="metric"><div class="m-label">📅 每月總配息</div><div class="m-val">${isUsd ? 'USD '+fmt(sumMUsd,2) : 'TWD '+fmt(Math.round(sumM))}</div></div>
+    <div class="metric"><div class="m-label">📈 綜合年化報酬</div><div class="m-val">${((sumYNative/effNative)*100).toFixed(2)}%</div></div>
   `;
-  document.getElementById('alloc-summary').textContent=
-    `實際投入 TWD ${fmt(Math.round(eff))}（保費 ${wan} 萬 扣除手續費 TWD ${fmt(Math.round(prem*rate))}）｜每年配息 TWD ${fmt(Math.round(sumY))}`;
+  document.getElementById('alloc-summary').textContent = isUsd
+    ? `實際投入 USD ${fmt(effNative,2)}（保費 ${wan} 萬美元 扣除手續費 USD ${fmt(premNative*rate,2)}）｜每年配息 USD ${fmt(sumYUsd,2)}`
+    : `實際投入 TWD ${fmt(Math.round(effNative))}（保費 ${wan} 萬 扣除手續費 TWD ${fmt(Math.round(premNative*rate))}）｜每年配息 TWD ${fmt(Math.round(sumY))}`;
   document.getElementById('alloc-results').classList.add('show');
   document.getElementById('alloc-results').scrollIntoView({behavior:'smooth'});
 }
@@ -626,21 +672,25 @@ function toggleAllPerf() {
 
 function calcCompare() {
   const wan  = parseFloat(document.getElementById('premium').value) || 0;
-  const prem = wan * 10000;
   const rate = getFeeRate(wan);
   const usdR = parseFloat(document.getElementById('usdRate').value) || 0;
   if (!usdR) return;
 
-  const eff = prem*(1-rate);
+  const isUsd = productType === 'VCCF';
+  const premNative = wan * 10000;
+  const effNative  = premNative*(1-rate);
+  const effUsd     = isUsd ? effNative : effNative/usdR;
+
   const results = [];
   for (const f of PRESET_FUNDS) {
     const {name,nav,dist,perf} = f;
-    const units = eff/usdR/nav;
+    const units = effUsd/nav;
     const mUsd = units*dist;
     const mTwd = mUsd*usdR;
     const yUsd = mUsd*12;
     const yTwd = mTwd*12;
-    results.push({name,nav,dist,units,mTwd,mUsd,yTwd,yUsd,yieldR:(yTwd/eff)*100,perf});
+    const yNative = isUsd ? yUsd : yTwd;
+    results.push({name,nav,dist,units,mTwd,mUsd,yTwd,yUsd,yieldR:(yNative/effNative)*100,perf});
   }
 
   results.sort((a,b)=>b.yieldR-a.yieldR);
@@ -654,12 +704,13 @@ function calcCompare() {
 
   const best=results[0], worst=results[results.length-1];
   document.getElementById('compare-metrics').innerHTML=`
-    <div class="metric"><div class="m-label">🏆 最高月配息</div><div class="m-val">TWD ${fmt(Math.round(best.mTwd))}</div></div>
+    <div class="metric"><div class="m-label">🏆 最高月配息</div><div class="m-val">${isUsd ? 'USD '+fmt(best.mUsd,2) : 'TWD '+fmt(Math.round(best.mTwd))}</div></div>
     <div class="metric"><div class="m-label">📈 最高年化報酬率</div><div class="m-val">${best.yieldR.toFixed(2)}%</div></div>
-    <div class="metric"><div class="m-label">💡 最高 vs 最低差</div><div class="m-val">TWD ${fmt(Math.round(best.mTwd-worst.mTwd))}/月</div></div>
+    <div class="metric"><div class="m-label">💡 最高 vs 最低差</div><div class="m-val">${isUsd ? 'USD '+fmt(best.mUsd-worst.mUsd,2) : 'TWD '+fmt(Math.round(best.mTwd-worst.mTwd))}/月</div></div>
   `;
-  document.getElementById('compare-summary').textContent=
-    `相同保費 ${wan} 萬（手續費 ${(rate*100).toFixed(1)}%，實際投入 TWD ${fmt(Math.round(eff))}）下各基金每月配息差異`;
+  document.getElementById('compare-summary').textContent = isUsd
+    ? `相同保費 ${wan} 萬美元（手續費 ${(rate*100).toFixed(1)}%，實際投入 USD ${fmt(effNative,2)}）下各基金每月配息差異`
+    : `相同保費 ${wan} 萬（手續費 ${(rate*100).toFixed(1)}%，實際投入 TWD ${fmt(Math.round(effNative))}）下各基金每月配息差異`;
 }
 
 // 預設載入
