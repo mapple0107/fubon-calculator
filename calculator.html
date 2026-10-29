@@ -244,7 +244,7 @@
       <h2>基金組合試算結果</h2>
       <div class="metric-grid" id="alloc-metrics"></div>
       <table>
-        <thead><tr><th>排名</th><th>基金</th><th>配置</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每年配息(TWD)</th><th>年化配息率</th></tr></thead>
+        <thead><tr><th>排名</th><th>基金</th><th>配置</th><th>淨值</th><th>單位數</th><th>每單位分配金額</th><th>每月配息(TWD)</th><th>每月配息(USD)</th><th>每年配息(TWD)</th><th>每年配息(USD)</th><th>年化配息率</th></tr></thead>
         <tbody id="alloc-table"></tbody>
       </table>
       <div class="summary-row" id="alloc-summary"></div>
@@ -555,9 +555,11 @@ function calcAlloc() {
     if (!ratio)      { showWarn(warn,`「${name}」配置比例為 0。`); return; }
     const alloc = eff*(ratio/100);
     const units = alloc/usdR/nav;
-    const mTwd  = units*dist*usdR;
+    const mUsd  = units*dist;
+    const mTwd  = mUsd*usdR;
+    const yUsd  = mUsd*12;
     const yTwd  = mTwd*12;
-    results.push({name,nav,dist,ratio,units,mTwd,yTwd,yieldR:(yTwd/alloc)*100,perf});
+    results.push({name,nav,dist,ratio,units,mTwd,mUsd,yTwd,yUsd,yieldR:(yTwd/alloc)*100,perf});
   }
   renderComboPerf('alloc-perf', 'alloc-perf-grid', results);
 
@@ -565,12 +567,12 @@ function calcAlloc() {
   const medals=['🥇','🥈','🥉'];
   const tbody=document.getElementById('alloc-table');
   tbody.innerHTML='';
-  let sumM=0, sumY=0;
+  let sumM=0, sumMUsd=0, sumY=0, sumYUsd=0;
   results.forEach((r,i)=>{
-    sumM+=r.mTwd; sumY+=r.yTwd;
-    tbody.innerHTML+=`<tr><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${r.ratio}%</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
+    sumM+=r.mTwd; sumMUsd+=r.mUsd; sumY+=r.yTwd; sumYUsd+=r.yUsd;
+    tbody.innerHTML+=`<tr><td>${medals[i]||(i+1)+'.'}</td><td>${r.name}</td><td>${r.ratio}%</td><td>${fmt(r.nav,4)}</td><td>${fmt(r.units,2)}</td><td>${fmt(r.dist,4)}</td><td><b>TWD ${fmt(Math.round(r.mTwd))}</b></td><td>USD ${fmt(r.mUsd,2)}</td><td>TWD ${fmt(Math.round(r.yTwd))}</td><td>USD ${fmt(r.yUsd,2)}</td><td><b>${r.yieldR.toFixed(2)}%</b></td></tr>`;
   });
-  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="3"></td><td>TWD ${fmt(Math.round(sumM))}</td><td>TWD ${fmt(Math.round(sumY))}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
+  tbody.innerHTML+=`<tr class="sum-row"><td colspan="2">合計</td><td>100%</td><td colspan="3"></td><td>TWD ${fmt(Math.round(sumM))}</td><td>USD ${fmt(sumMUsd,2)}</td><td>TWD ${fmt(Math.round(sumY))}</td><td>USD ${fmt(sumYUsd,2)}</td><td>${((sumY/eff)*100).toFixed(2)}%</td></tr>`;
 
   document.getElementById('alloc-metrics').innerHTML=`
     <div class="metric"><div class="m-label">💰 手續費率</div><div class="m-val">${(rate*100).toFixed(1)}%</div></div>
