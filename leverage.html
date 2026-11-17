@@ -16,6 +16,7 @@
   @media (max-width: 768px) {
     .container { width: 100%; max-width: 100%; zoom: 1; }
     body { padding: 1.25rem 0.75rem; font-size: 16px; }
+    .grid3 { grid-template-columns: 1fr !important; }
   }
   .back-link { display:inline-flex; align-items:center; gap:4px; margin-bottom:16px; font-size:14px; color:#0071e3; text-decoration:none; font-weight:600; }
   h1 { font-size: 2rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em; }
@@ -35,6 +36,18 @@
   .nav-card.active .nav-icon { background:#0071e3; }
   .nav-title { font-size:14px; font-weight:700; }
   .nav-sub { font-size:11px; color:#86868b; }
+
+  .mode-tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; background: #eceef1; border-radius: 14px; padding: 5px; }
+  .mode-tab {
+    flex: 1; text-align: center; padding: 10px 6px; border: none; background: transparent;
+    border-radius: 10px; font-size: 14px; font-weight: 700; color: #86868b; cursor: pointer; transition: all .15s;
+  }
+  .mode-tab.active { background: #fff; color: #0071e3; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .mode-tab:hover:not(.active) { color: #1d1d1f; }
+  .mode-tab:disabled { opacity: .45; cursor: not-allowed; }
+  .section { display: none; }
+  .section.active { display: block; }
+
   .card {
     background: #fff; border-radius: 22px; padding: 1.75rem; margin-bottom: 1.5rem;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03);
@@ -70,6 +83,8 @@
   }
   .calc-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,113,227,0.32); }
   .warn { display:none; background:#fff3f0; color:#d0392b; border-radius:10px; padding:10px 14px; font-size:13px; margin-top:10px; font-weight:600; }
+  .hint { display:none; background:#fff8e8; color:#9a6b00; border-radius:10px; padding:12px 14px; font-size:13px; font-weight:600; text-align:center; }
+  .hint.show { display:block; }
   .metric-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
   .metric {
     background: linear-gradient(135deg, #eef6ff, #f5faff); border-radius: 16px;
@@ -82,9 +97,9 @@
     font-variant-numeric: tabular-nums;
   }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; padding: 10px 12px; font-size: 12px; color: #86868b; font-weight: 700; border-bottom: 2px solid #f0f0f2; }
+  th { text-align: center; padding: 10px 12px; font-size: 12px; color: #86868b; font-weight: 700; border-bottom: 2px solid #f0f0f2; }
   td {
-    padding: 12px 10px; border-bottom: 1px solid #f5f5f7;
+    text-align: center; padding: 12px 10px; border-bottom: 1px solid #f5f5f7;
     font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
   }
@@ -92,7 +107,8 @@
   .results { display: none; }
   .results.show { display: block; }
   .summary-row { font-size: 12.5px; color: #86868b; margin-top: 10px; text-align: center; }
-  @media (max-width: 500px) { .grid3, .metric-grid { grid-template-columns: 1fr 1fr; } }
+  .note { font-size: 11px; color: #86868b; margin: -8px 0 12px; }
+  @media (max-width: 500px) { .metric-grid { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -102,7 +118,7 @@
     <img src="avatar.png" alt="頭像" style="width:100px; height:100px; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.15); flex-shrink:0;">
     <div>
       <h1 style="margin-bottom:2px; font-size:2.6rem;">房產活化試算機</h1>
-      <p class="subtitle" style="margin-bottom:0;">理財型房貸增貸投資試算</p>
+      <p class="subtitle" style="margin-bottom:0;">房貸試算｜配息基金｜資產負債總覽</p>
     </div>
   </div>
 
@@ -121,141 +137,285 @@
     </a>
   </div>
 
-  <div class="card">
-    <h2>房屋與增貸額度</h2>
-    <div class="grid3">
-      <div class="field">
-        <label>房屋現值（鑑價／市價）</label>
-        <div class="input-wrap">
-          <input type="number" id="propValue" value="1000" step="10" oninput="updateAvailable()">
-          <span class="unit">萬元</span>
-        </div>
-      </div>
-      <div class="field">
-        <label>目前房貸餘額</label>
-        <div class="input-wrap">
-          <input type="number" id="curLoan" value="300" step="10" oninput="updateAvailable()">
-          <span class="unit">萬元</span>
-        </div>
-      </div>
-      <div class="field">
-        <label>可增貸成數</label>
-        <div class="input-wrap">
-          <input type="number" id="ltvPct" value="80" step="1" oninput="updateAvailable()">
-          <span class="unit">%</span>
-        </div>
-      </div>
-    </div>
-    <div class="fee-info" id="avail-info" style="margin-top:14px;"></div>
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tab-mortgage" onclick="switchTab('mortgage')">🏦 房貸試算</button>
+    <button class="mode-tab" id="tab-fund" onclick="switchTab('fund')">💰 配息基金</button>
+    <button class="mode-tab" id="tab-summary" onclick="switchTab('summary')">📊 資產負債總覽</button>
   </div>
 
-  <div class="card">
-    <h2>增貸投資設定</h2>
-    <div class="grid3">
-      <div class="field">
-        <label>增貸投入金額</label>
-        <div class="input-wrap">
-          <input type="number" id="drawAmount" value="0" step="10" oninput="onDrawManualChange()">
-          <span class="unit">萬元</span>
+  <!-- 房貸試算 -->
+  <div id="section-mortgage" class="section active">
+    <div class="card">
+      <h2>房貸條件設定</h2>
+      <div class="grid3">
+        <div class="field">
+          <label>借款金額</label>
+          <div class="input-wrap">
+            <input type="number" id="loanPrincipal" value="1000" step="10">
+            <span class="unit">萬元</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>年利率</label>
+          <div class="input-wrap">
+            <input type="number" id="loanRate" value="2.6" step="0.05">
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>還款年期</label>
+          <div class="input-wrap">
+            <input type="number" id="loanYears" value="30" step="1">
+            <span class="unit">年</span>
+          </div>
         </div>
       </div>
-      <div class="field">
-        <label>增貸利率</label>
-        <div class="input-wrap">
-          <input type="number" id="loanRate" value="2.3" step="0.05">
-          <span class="unit">%</span>
-        </div>
-      </div>
-      <div class="field">
-        <label>預期投資年化報酬率</label>
-        <div class="input-wrap">
-          <input type="number" id="investRate" value="6" step="0.1">
-          <span class="unit">%</span>
+      <div class="grid3" style="margin-top:14px;">
+        <div class="field">
+          <label>寬限期（只繳息）</label>
+          <div class="input-wrap">
+            <input type="number" id="loanGrace" value="2" step="1">
+            <span class="unit">年</span>
+          </div>
         </div>
       </div>
     </div>
-    <div class="warn" id="leverage-warn"></div>
+
+    <button class="calc-btn" onclick="calcMortgage()">計算房貸試算</button>
+
+    <div class="results card" id="mortgage-results" style="margin-top:1.25rem;">
+      <h2>房貸試算結果（年度摘要）</h2>
+      <div class="metric-grid" id="mortgage-metrics"></div>
+      <div style="max-height:420px; overflow-y:auto;">
+      <table>
+        <thead><tr><th>年度</th><th>年初餘額</th><th>年繳利息</th><th>年繳本金</th><th>年末餘額</th></tr></thead>
+        <tbody id="mortgage-table"></tbody>
+      </table>
+      </div>
+    </div>
   </div>
 
-  <button class="calc-btn" onclick="calcLeverage()">計算房產活化試算</button>
-
-  <div class="results card" id="leverage-results" style="margin-top:1.25rem;">
-    <h2>試算結果</h2>
-    <div style="font-size:11px; color:#86868b; margin:-8px 0 12px;">
-      本試算以固定增貸利率與固定預期投資報酬率估算每月／每年現金流差額，未考慮房貸本金攤還、投資市值波動或複利效果，屬理想化情境僅供參考；實際可增貸金額與核貸利率依銀行審核條件為準，投資報酬並非保證，請審慎評估財務槓桿風險。
+  <!-- 配息基金 -->
+  <div id="section-fund" class="section">
+    <div class="card">
+      <h2>配息基金假設</h2>
+      <div class="note">以下淨值／配息金額僅為試算示範用假設值，正確最新數字請至「配息計算機」頁面查詢。</div>
+      <div class="grid3">
+        <div class="field">
+          <label>投入金額</label>
+          <div class="input-wrap">
+            <input type="number" id="fundInvest" value="1000" step="10" oninput="onFundInvestChange()">
+            <span class="unit">萬元</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>手續費</label>
+          <div class="input-wrap">
+            <input type="number" id="fundFeePct" value="4" step="0.1">
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>美金匯率</label>
+          <div class="input-wrap">
+            <input type="number" id="fundFxRate" value="32.5" step="0.1">
+            <span class="unit">TWD/USD</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid3" style="margin-top:14px;">
+        <div class="field">
+          <label>假設淨值（USD/單位）</label>
+          <div class="input-wrap">
+            <input type="number" id="fundNav" value="8.00" step="0.01">
+            <span class="unit">USD</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>假設每單位月配息（USD）</label>
+          <div class="input-wrap">
+            <input type="number" id="fundDist" value="0.06" step="0.001">
+            <span class="unit">USD</span>
+          </div>
+        </div>
+      </div>
+      <div class="fee-info" id="fund-fee-info" style="margin-top:14px;"></div>
     </div>
-    <div class="metric-grid" id="leverage-metrics"></div>
-    <table>
-      <thead><tr><th>年度</th><th>當年淨現金流</th><th>累積淨現金流</th></tr></thead>
-      <tbody id="leverage-table"></tbody>
-    </table>
-    <div class="summary-row" id="leverage-summary"></div>
+
+    <button class="calc-btn" onclick="calcFund()">試算配息</button>
+
+    <div class="results card" id="fund-results" style="margin-top:1.25rem;">
+      <h2>配息試算結果</h2>
+      <div class="metric-grid" id="fund-metrics"></div>
+      <div class="summary-row" id="fund-summary"></div>
+    </div>
+  </div>
+
+  <!-- 資產負債總覽 -->
+  <div id="section-summary" class="section">
+    <div class="card">
+      <h2>資產負債總覽</h2>
+      <div class="note">將房貸試算的「房貸餘額」與配息基金試算的「累計已領配息」並列，觀察隨時間推移，投入本金加上已領配息是否足以覆蓋剩餘房貸餘額。本表假設配息金額逐年不變、且不計入複利滾存，僅供概念參考。</div>
+      <div class="hint" id="summary-hint">請先完成上方「房貸試算」與「配息基金」兩個分頁的試算，這裡才會顯示結果。</div>
+      <div id="summary-content" style="display:none;">
+        <div class="metric-grid" id="summary-metrics"></div>
+        <div style="max-height:420px; overflow-y:auto;">
+        <table>
+          <thead><tr><th>年度</th><th>房貸餘額</th><th>基金累計已領配息</th><th>淨部位（本金+配息-房貸餘額）</th></tr></thead>
+          <tbody id="summary-table"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="text-align:center; margin-top:4px;">
+    本頁所有試算均為簡化假設情境，未必反映實際銀行核貸條件、利率變動或基金實際報酬，僅供規劃參考，不構成投資或貸款建議，實際申辦請以銀行與基金公司最新公告為準。
   </div>
 </div>
 
 <script>
 function fmt(n, dec=0) { return Math.round(n).toLocaleString('zh-TW',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
-function showWarn(el, msg) { el.style.display='block'; el.textContent=msg; }
 
-let drawTouched = false;
-function onDrawManualChange() { drawTouched = true; }
-
-function updateAvailable() {
-  const propVal = (parseFloat(document.getElementById('propValue').value) || 0) * 10000;
-  const curLoan = (parseFloat(document.getElementById('curLoan').value) || 0) * 10000;
-  const ltv = (parseFloat(document.getElementById('ltvPct').value) || 0) / 100;
-  const avail = Math.max(propVal * ltv - curLoan, 0);
-  document.getElementById('avail-info').textContent = `可增貸額度：約 TWD ${fmt(avail)}（約 ${fmt(avail/10000)} 萬元）`;
-  if (!drawTouched) {
-    document.getElementById('drawAmount').value = (avail/10000).toFixed(0);
-  }
-  return avail;
+function switchTab(mode) {
+  ['mortgage','fund','summary'].forEach(m => {
+    document.getElementById('tab-'+m).classList.toggle('active', m===mode);
+    document.getElementById('section-'+m).classList.toggle('active', m===mode);
+  });
+  if (mode === 'summary') renderSummary();
 }
 
-function calcLeverage() {
-  const avail = updateAvailable();
-  const drawWan = parseFloat(document.getElementById('drawAmount').value) || 0;
-  const draw = drawWan * 10000;
-  const loanRate = (parseFloat(document.getElementById('loanRate').value) || 0) / 100;
-  const investRate = (parseFloat(document.getElementById('investRate').value) || 0) / 100;
-  const warn = document.getElementById('leverage-warn');
+/* ---------- 房貸試算 ---------- */
+let mortgageSchedule = null;
 
-  if (draw <= 0) { showWarn(warn, '請輸入增貸投入金額。'); return; }
-  if (draw > avail) {
-    showWarn(warn, `增貸投入金額 ${fmt(drawWan)} 萬元，超過估算可增貸額度（約 ${fmt(avail/10000)} 萬元），實際金額仍以銀行核貸為準。`);
-  } else {
-    warn.style.display = 'none';
+function calcMortgage() {
+  const principal = (parseFloat(document.getElementById('loanPrincipal').value) || 0) * 10000;
+  const annualRate = parseFloat(document.getElementById('loanRate').value) || 0;
+  const years = parseInt(document.getElementById('loanYears').value) || 0;
+  const grace = Math.min(parseInt(document.getElementById('loanGrace').value) || 0, years);
+  const r = annualRate / 100 / 12;
+  const amortMonths = (years - grace) * 12;
+  let balance = principal;
+  const monthlyPaymentAmort = amortMonths > 0
+    ? (r > 0 ? balance * r / (1 - Math.pow(1 + r, -amortMonths)) : balance / amortMonths)
+    : 0;
+
+  const schedule = [];
+  let totalInterest = 0, totalPrincipalPaid = 0;
+  for (let y = 1; y <= years; y++) {
+    const startBal = balance;
+    let yearInterest = 0, yearPrincipal = 0;
+    for (let m = 0; m < 12; m++) {
+      const interest = balance * r;
+      let principalPaid = 0;
+      if (y > grace) {
+        principalPaid = Math.min(monthlyPaymentAmort - interest, balance);
+      }
+      balance -= principalPaid;
+      yearInterest += interest;
+      yearPrincipal += principalPaid;
+    }
+    totalInterest += yearInterest;
+    totalPrincipalPaid += yearPrincipal;
+    schedule.push({ year: y, startBal, yearInterest, yearPrincipal, endBal: Math.max(balance, 0) });
   }
+  mortgageSchedule = schedule;
 
-  const monthlyInterest = draw * loanRate / 12;
-  const monthlyInvestIncome = draw * investRate / 12;
-  const monthlyNet = monthlyInvestIncome - monthlyInterest;
-  const yearlyNet = monthlyNet * 12;
-  const spreadPct = (investRate - loanRate) * 100;
-  const netColor = monthlyNet >= 0 ? '#0071e3' : '#d0392b';
-
-  document.getElementById('leverage-metrics').innerHTML = `
-    <div class="metric"><div class="m-label">🏦 每月貸款利息</div><div class="m-val">TWD ${fmt(monthlyInterest)}</div></div>
-    <div class="metric"><div class="m-label">📈 每月預估投資收益</div><div class="m-val">TWD ${fmt(monthlyInvestIncome)}</div></div>
-    <div class="metric"><div class="m-label">💰 每月淨現金流</div><div class="m-val" style="color:${netColor};">TWD ${fmt(monthlyNet)}</div></div>
-  `;
-
-  const tbody = document.getElementById('leverage-table');
+  const tbody = document.getElementById('mortgage-table');
   tbody.innerHTML = '';
-  [1,3,5,10,20].forEach(y => {
-    const cum = yearlyNet * y;
-    const color = cum >= 0 ? '#1a8a3c' : '#d0392b';
-    tbody.innerHTML += `<tr><td>第 ${y} 年</td><td style="color:${netColor}">TWD ${fmt(yearlyNet)}</td><td style="color:${color}">TWD ${fmt(cum)}</td></tr>`;
+  schedule.forEach(row => {
+    tbody.innerHTML += `<tr><td>第 ${row.year} 年</td><td>${fmt(row.startBal)}</td><td>${fmt(row.yearInterest)}</td><td>${fmt(row.yearPrincipal)}</td><td>${fmt(row.endBal)}</td></tr>`;
   });
 
-  document.getElementById('leverage-summary').textContent =
-    `增貸投入 TWD ${fmt(draw)}（房貸利率 ${(loanRate*100).toFixed(2)}% vs 投資報酬率 ${(investRate*100).toFixed(2)}%，年化利差 ${spreadPct.toFixed(2)}%）｜每年淨現金流 TWD ${fmt(yearlyNet)}`;
+  document.getElementById('mortgage-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">🏦 寬限期月付（只繳息）</div><div class="m-val">TWD ${fmt(principal*r)}</div></div>
+    <div class="metric"><div class="m-label">📅 攤還期月付（本息）</div><div class="m-val">TWD ${fmt(monthlyPaymentAmort)}</div></div>
+    <div class="metric"><div class="m-label">💰 總繳利息</div><div class="m-val">TWD ${fmt(totalInterest)}</div></div>
+  `;
 
-  document.getElementById('leverage-results').classList.add('show');
-  document.getElementById('leverage-results').scrollIntoView({behavior:'smooth'});
+  document.getElementById('mortgage-results').classList.add('show');
+  document.getElementById('mortgage-results').scrollIntoView({behavior:'smooth'});
 }
 
-updateAvailable();
+/* ---------- 配息基金 ---------- */
+// 手續費級距沿用配息計算機（VCCT）的台幣保費級距規則：未滿200萬5%｜200~499萬4%｜500~999萬3%｜1000萬以上2%
+function getDefaultFundFeeRate(wan) {
+  if (wan >= 1000) return 2;
+  if (wan >= 500)  return 3;
+  if (wan >= 200)  return 4;
+  return 5;
+}
+function onFundInvestChange() {
+  const wan = parseFloat(document.getElementById('fundInvest').value) || 0;
+  document.getElementById('fundFeePct').value = getDefaultFundFeeRate(wan);
+}
+
+let fundResult = null;
+
+function calcFund() {
+  const wan = parseFloat(document.getElementById('fundInvest').value) || 0;
+  const invest = wan * 10000;
+  const feeRate = (parseFloat(document.getElementById('fundFeePct').value) || 0) / 100;
+  const fxRate = parseFloat(document.getElementById('fundFxRate').value) || 0;
+  const nav = parseFloat(document.getElementById('fundNav').value) || 0;
+  const dist = parseFloat(document.getElementById('fundDist').value) || 0;
+
+  const eff = invest * (1 - feeRate);
+  const units = (fxRate && nav) ? (eff / fxRate / nav) : 0;
+  const monthlyUsd = units * dist;
+  const monthlyTwd = monthlyUsd * fxRate;
+  const yearlyTwd = monthlyTwd * 12;
+  const yieldPct = eff > 0 ? (yearlyTwd / eff * 100) : 0;
+
+  fundResult = { invest, eff, monthlyUsd, monthlyTwd, yearlyTwd, yieldPct };
+
+  document.getElementById('fund-fee-info').textContent =
+    `實際投入 TWD ${fmt(eff)}（投入 ${wan} 萬元，扣除手續費 TWD ${fmt(invest*feeRate)}）`;
+
+  document.getElementById('fund-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">💵 每月配息</div><div class="m-val">TWD ${fmt(monthlyTwd)}</div></div>
+    <div class="metric"><div class="m-label">📅 每年配息</div><div class="m-val">TWD ${fmt(yearlyTwd)}</div></div>
+    <div class="metric"><div class="m-label">📈 年化配息率</div><div class="m-val">${yieldPct.toFixed(2)}%</div></div>
+  `;
+  document.getElementById('fund-summary').textContent =
+    `USD ${fmt(monthlyUsd,2)} / 月（約合 TWD ${fmt(monthlyTwd)}），單位數 ${fmt(units,2)}`;
+
+  document.getElementById('fund-results').classList.add('show');
+  document.getElementById('fund-results').scrollIntoView({behavior:'smooth'});
+}
+
+/* ---------- 資產負債總覽 ---------- */
+function renderSummary() {
+  const hint = document.getElementById('summary-hint');
+  const content = document.getElementById('summary-content');
+  if (!mortgageSchedule || !fundResult) {
+    hint.classList.add('show');
+    content.style.display = 'none';
+    return;
+  }
+  hint.classList.remove('show');
+  content.style.display = 'block';
+
+  const tbody = document.getElementById('summary-table');
+  tbody.innerHTML = '';
+  let finalNet = 0;
+  mortgageSchedule.forEach(row => {
+    const cumDividend = fundResult.yearlyTwd * row.year;
+    const netPosition = fundResult.eff + cumDividend - row.endBal;
+    finalNet = netPosition;
+    const color = netPosition >= 0 ? '#1a8a3c' : '#d0392b';
+    tbody.innerHTML += `<tr><td>第 ${row.year} 年</td><td>${fmt(row.endBal)}</td><td>${fmt(cumDividend)}</td><td style="color:${color}">${fmt(netPosition)}</td></tr>`;
+  });
+
+  const lastRow = mortgageSchedule[mortgageSchedule.length - 1];
+  const breakEvenRow = mortgageSchedule.find(row => (fundResult.eff + fundResult.yearlyTwd*row.year - row.endBal) >= 0);
+
+  document.getElementById('summary-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">🏦 房貸總年期末餘額</div><div class="m-val">TWD ${fmt(lastRow.endBal)}</div></div>
+    <div class="metric"><div class="m-label">💰 末年淨部位</div><div class="m-val" style="color:${finalNet>=0?'#0071e3':'#d0392b'};">TWD ${fmt(finalNet)}</div></div>
+    <div class="metric"><div class="m-label">⚖️ 轉正年度</div><div class="m-val">${breakEvenRow ? '第 '+breakEvenRow.year+' 年' : '期間內未轉正'}</div></div>
+  `;
+}
 </script>
 </body>
 </html>
