@@ -69,6 +69,13 @@
   }
   .input-wrap input:focus { outline: none; border-color: #0071e3; background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.08); }
   .input-wrap .unit { font-size: 13px; color: #86868b; white-space: nowrap; }
+  .field select {
+    font-size: 16px; font-weight: 600; padding: 11px 13px; border-radius: 12px;
+    border: 1px solid #e5e5ea; background: #f9f9fb; color: #1d1d1f; width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition: all 0.15s;
+  }
+  .field select:focus { outline: none; border-color: #0071e3; background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.08); }
   .fee-info {
     font-size: 12px; color: #0071e3; background: #eef6ff;
     border-radius: 10px; padding: 8px 12px; margin-top: 8px; font-weight: 500;
@@ -200,6 +207,12 @@
     <div class="card">
       <h2>配息基金假設</h2>
       <div class="note">以下淨值／配息金額僅為試算示範用假設值，正確最新數字請至「配息計算機」頁面查詢。</div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>選擇基金（自動帶入淨值／每單位分配金額）</label>
+        <select id="fundSelect" onchange="onFundSelectChange()">
+          <option value="">── 手動輸入假設值 ──</option>
+        </select>
+      </div>
       <div class="grid3">
         <div class="field">
           <label>投入金額</label>
@@ -275,6 +288,19 @@
 </div>
 
 <script>
+// 與配息計算機（calculator.html）相同的 8 檔基金資料，供「配息基金」分頁下拉選單帶入淨值／配息金額。
+// 若基金淨值有更新，請同步更新 calculator.html 的 PRESET_FUNDS。
+const FUND_OPTIONS = [
+  { name:"JFP11", label:"JFP11｜摩根多重收益基金",  nav:71.75,  dist:0.609 },
+  { name:"ACC3",  label:"ACC3｜聯博多元資產收益組合-AI類型", nav:9.23, dist:0.075 },
+  { name:"IGB5",  label:"IGB5｜景順環球高評級企業債券", nav:6.7085, dist:0.051 },
+  { name:"FRP4",  label:"FRP4｜富蘭克林穩定月收益", nav:9.77, dist:0.067 },
+  { name:"DSP5",  label:"DSP5｜安聯收益成長(美元)", nav:8.1825, dist:0.06 },
+  { name:"SCP6",  label:"SCP6｜施羅德環球收益成長", nav:135.8991, dist:1.175936 },
+  { name:"ESC1",  label:"ESC1｜瀚亞多重收益B類型-美元", nav:8.11, dist:0.07 },
+  { name:"MLE24", label:"MLE24｜貝萊德世界科技基金", nav:19.37, dist:0.153 },
+];
+
 function fmt(n, dec=0) { return Math.round(n).toLocaleString('zh-TW',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
 
 function switchTab(mode) {
@@ -351,6 +377,39 @@ function onFundInvestChange() {
   document.getElementById('fundFeePct').value = getDefaultFundFeeRate(wan);
 }
 
+function buildFundOptions() {
+  const sel = document.getElementById('fundSelect');
+  FUND_OPTIONS.forEach((f, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = f.label;
+    sel.appendChild(opt);
+  });
+}
+
+function onFundSelectChange() {
+  const val = document.getElementById('fundSelect').value;
+  if (val === '') return;
+  const f = FUND_OPTIONS[parseInt(val)];
+  if (!f) return;
+  document.getElementById('fundNav').value = f.nav;
+  document.getElementById('fundDist').value = f.dist;
+  onFundInvestChange();
+}
+
+async function fetchFundLiveRate() {
+  const el = document.getElementById('fundFxRate');
+  if (!el) return;
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    const twd = data.rates && data.rates.TWD;
+    if (twd) el.value = twd.toFixed(3);
+  } catch (e) {
+    // 抓取失敗時維持欄位原本的範例匯率
+  }
+}
+
 let fundResult = null;
 
 function calcFund() {
@@ -417,6 +476,9 @@ function renderSummary() {
     <div class="metric"><div class="m-label">⚖️ 轉正年度</div><div class="m-val">${breakEvenRow ? '第 '+breakEvenRow.year+' 年' : '期間內未轉正'}</div></div>
   `;
 }
+
+buildFundOptions();
+fetchFundLiveRate();
 </script>
 </body>
 </html>
