@@ -327,8 +327,9 @@ function calcMortgage() {
     tbody.innerHTML += `<tr><td>第 ${row.year} 年</td><td>${fmt(row.startBal)}</td><td>${fmt(row.yearInterest)}</td><td>${fmt(row.yearPrincipal)}</td><td>${fmt(row.endBal)}</td></tr>`;
   });
 
+  const graceMonthlyDisplay = grace > 0 ? `TWD ${fmt(principal*r)}` : '無寬限期';
   document.getElementById('mortgage-metrics').innerHTML = `
-    <div class="metric"><div class="m-label">🏦 寬限期月付（只繳息）</div><div class="m-val">TWD ${fmt(principal*r)}</div></div>
+    <div class="metric"><div class="m-label">🏦 寬限期月付（只繳息）</div><div class="m-val">${graceMonthlyDisplay}</div></div>
     <div class="metric"><div class="m-label">📅 攤還期月付（本息）</div><div class="m-val">TWD ${fmt(monthlyPaymentAmort)}</div></div>
     <div class="metric"><div class="m-label">💰 總繳利息</div><div class="m-val">TWD ${fmt(totalInterest)}</div></div>
   `;
