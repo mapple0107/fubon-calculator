@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>買樂理財工具｜理財試算</title>
+<link rel="stylesheet" href="auth.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Segoe UI", sans-serif; color: #0f172a; background: #ffffff; }
+  a { text-decoration: none; }
+
+  /* Header */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; border-bottom: 1px solid #eef1f5; position: sticky; top: 0; background: #fff; z-index: 10; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+  .brand-name { font-size: 22px; font-weight: 700; color: #2563eb; white-space: nowrap; }
+  nav { display: flex; gap: 32px; }
+  nav a { font-size: 22px; color: #475569; font-weight: 600; padding-bottom: 4px; border-bottom: 2px solid transparent; }
+  nav a.active { color: #2563eb; border-bottom-color: #2563eb; }
+  nav a:hover:not(.active) { color: #0f172a; }
+  .contact-btn { border: 1.5px solid #2563eb; color: #2563eb; font-size: 22px; font-weight: 600; padding: 9px 20px; border-radius: 999px; white-space: nowrap; }
+  .contact-btn:hover { background: #eef4ff; }
+  @media (max-width: 860px) { nav { display: none; } }
+
+  /* Page background decoration */
+  .page-wrap { position: relative; overflow: hidden; background: linear-gradient(180deg, #eef6ff 0%, #f7fbff 45%, #ffffff 75%); }
+  .page-wrap svg.deco-top { position: absolute; top: -20px; right: -60px; width: 720px; max-width: 65%; opacity: 0.5; pointer-events: none; }
+  .page-wrap svg.deco-bottom { position: absolute; bottom: -10px; left: -60px; width: 640px; max-width: 60%; opacity: 0.4; pointer-events: none; transform: scaleX(-1); }
+
+  .main { position: relative; max-width: 1240px; margin: 0 auto; padding: 56px 40px 20px; text-align: center; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #e8f0ff; color: #2563eb; font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 999px; margin-bottom: 22px; }
+  .main h1 { font-size: 36px; font-weight: 800; color: #0f172a; margin-bottom: 14px; }
+  .main p.desc { font-size: 15px; color: #64748b; margin-bottom: 44px; }
+
+  /* Tool cards */
+  .tools-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; text-align: left; margin-bottom: 56px; }
+  .tool-card { background: #fff; border-radius: 22px; padding: 30px; box-shadow: 0 20px 45px -20px rgba(15,23,42,0.15); border: 1px solid #f1f5f9; }
+  .tool-card-head { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .tool-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .tool-icon.blue { background: #e8f0ff; color: #2563eb; }
+  .tool-icon.teal { background: #e3faf5; color: #0d9488; }
+  .tool-icon.amber { background: #fef3e2; color: #d97706; }
+  .tool-card-head h3 { font-size: 19px; font-weight: 800; color: #0f172a; margin-bottom: 3px; }
+  .tool-card-head p { font-size: 13px; color: #94a3b8; }
+
+  .field-row { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 12px; padding: 13px 16px; margin-bottom: 10px; font-size: 14px; }
+  .field-row .fk { display: flex; align-items: center; gap: 8px; color: #64748b; }
+  .field-row .fv { font-weight: 700; color: #0f172a; }
+
+  .card-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 700; color: #fff; margin: 18px 0 14px; }
+  .card-btn.blue { background: #2563eb; }
+  .card-btn.blue:hover { background: #1d4ed8; }
+  .card-btn.teal { background: #0d9488; }
+  .card-btn.teal:hover { background: #0b7d73; }
+  .card-btn.amber { background: #d97706; }
+  .card-btn.amber:hover { background: #b45309; }
+
+  .result-row { display: flex; align-items: center; justify-content: space-between; border-radius: 12px; padding: 14px 16px; font-size: 14px; font-weight: 600; }
+  .result-row.blue { background: #eef4ff; color: #1d4ed8; }
+  .result-row.teal { background: #e3faf5; color: #0b7d73; }
+  .result-row.amber { background: #fef3e2; color: #b45309; }
+  .result-row .rv { font-size: 20px; font-weight: 800; }
+
+  @media (max-width: 1100px) {
+    .tools-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 860px) {
+    header { padding: 14px 20px; }
+    .main { padding: 40px 20px 10px; }
+    .main h1 { font-size: 26px; }
+    .tools-grid { grid-template-columns: 1fr; }
+  }
+
+  footer { text-align: center; padding: 26px 20px; color: #94a3b8; font-size: 13px; border-top: 1px solid #eef1f5; }
+</style>
+</head>
+<body>
+<script src="auth.js"></script>
+<div id="main-content" style="display:none;">
+
+<header>
+  <div class="brand">
+    <img class="avatar" src="avatar.png" alt="頭像">
+    <div class="brand-name">買樂理財工具</div>
+  </div>
+  <nav>
+    <a href="index.html">← 首頁</a>
+    <a href="calculator.html">配息計算</a>
+    <a href="dca.html">定期定額</a>
+    <a href="leverage.html">房產活化</a>
+  </nav>
+  <a class="contact-btn" href="https://line.me/ti/p/0JGzWZG52U" target="_blank" rel="noopener">聯絡我</a>
+</header>
+
+<div class="page-wrap">
+  <svg class="deco-top" viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="0,220 90,190 170,230 250,150 330,180 410,100 490,140 570,60 650,90 700,40" fill="none" stroke="#93c5fd" stroke-width="2.5"/>
+    <g fill="#93c5fd">
+      <circle cx="90" cy="190" r="4"/><circle cx="250" cy="150" r="4"/><circle cx="410" cy="100" r="4"/><circle cx="570" cy="60" r="4"/><circle cx="700" cy="40" r="5"/>
+    </g>
+  </svg>
+  <svg class="deco-bottom" viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="0,220 90,190 170,230 250,150 330,180 410,100 490,140 570,60 650,90 700,40" fill="none" stroke="#7dd3c8" stroke-width="2.5"/>
+    <g fill="#7dd3c8">
+      <circle cx="90" cy="190" r="4"/><circle cx="250" cy="150" r="4"/><circle cx="410" cy="100" r="4"/><circle cx="570" cy="60" r="4"/><circle cx="700" cy="40" r="5"/>
+    </g>
+  </svg>
+
+  <div class="main">
+    <h1>選擇工具，開始你的理財試算</h1>
+    <p class="desc">用簡單的數字，看見每月現金流與長期累積成果。</p>
+
+    <div class="tools-grid">
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <div class="tool-icon blue">🧮</div>
+          <div>
+            <h3>配息計算機</h3>
+            <p>快速估算每月現金流</p>
+          </div>
+        </div>
+        <div class="field-row"><div class="fk">💰 保費</div><div class="fv">200 萬元</div></div>
+        <div class="field-row"><div class="fk">% 手續費</div><div class="fv">4 %</div></div>
+        <div class="field-row"><div class="fk">↻ 美元匯率</div><div class="fv" id="home-usd-rate">32.200</div></div>
+        <a class="card-btn blue" href="calculator.html">開始配息試算 ›</a>
+        <div class="result-row blue"><span>💲 預估每月配息</span><span class="rv">TWD 12,000 ~ 17,000</span></div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <div class="tool-icon teal">📈</div>
+          <div>
+            <h3>定期定額</h3>
+            <p>試算時間與複利的累積效果</p>
+          </div>
+        </div>
+        <div class="field-row"><div class="fk">🏦 每月投入</div><div class="fv">10,000 元</div></div>
+        <div class="field-row"><div class="fk">% 預計年化報酬</div><div class="fv">6 %</div></div>
+        <div class="field-row"><div class="fk">📅 投資期間</div><div class="fv">20 年</div></div>
+        <a class="card-btn teal" href="dca.html">開始複利試算 ›</a>
+        <div class="result-row teal"><span>📈 預估累積成果</span><span class="rv">3,104,000 元</span></div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-card-head">
+          <div class="tool-icon amber">🏠</div>
+          <div>
+            <h3>房產活化</h3>
+            <p>理財型房貸增貸投資試算</p>
+          </div>
+        </div>
+        <div class="field-row"><div class="fk">🏦 借款金額</div><div class="fv">1,000 萬元</div></div>
+        <div class="field-row"><div class="fk">% 房貸年利率</div><div class="fv">2.6 %</div></div>
+        <div class="field-row"><div class="fk">💰 配息基金投入</div><div class="fv">1,000 萬元</div></div>
+        <a class="card-btn amber" href="leverage.html">開始房產活化試算 ›</a>
+        <div class="result-row amber"><span>💰 預估每月淨現金流</span><span class="rv">約 TWD 50,000</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// 首頁配息計算機預覽卡片：抓取即時美元匯率取代靜態範例值，
+// 邏輯與 calculator.html 的 fetchLiveRate() 相同，失敗時保留原本的靜態範例值。
+(async function () {
+  const el = document.getElementById('home-usd-rate');
+  if (!el) return;
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    const twd = data.rates && data.rates.TWD;
+    if (twd) {
+      el.textContent = twd.toFixed(3);
+    }
+  } catch (e) {
+    // 抓取失敗時維持頁面原本顯示的範例匯率，不影響版面
+  }
+})();
+</script>
+
+</body>
+</html>

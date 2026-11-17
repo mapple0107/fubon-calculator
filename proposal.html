@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>建議書系統｜買樂理財工具</title>
+<link rel="stylesheet" href="auth.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #eef4fb 0%, #f7f9fc 40%, #f5f5f7 100%);
+    color: #1d1d1f;
+    min-height: 100vh;
+  }
+  .container { width: 90%; max-width: 900px; margin: 0 auto; padding: 2.5rem 1rem; }
+  @media (max-width: 640px) {
+    .container { padding: 1.5rem 1rem; }
+  }
+
+  /* ---------- 共用元件 ---------- */
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px; margin-bottom: 16px;
+    font-size: 14px; color: #0071e3; text-decoration: none; font-weight: 600;
+    cursor: pointer; background: none; border: none; padding: 0; font-family: inherit;
+  }
+  h1.page-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em; }
+  .subtitle { font-size: 14px; color: #86868b; margin-bottom: 2rem; }
+
+  /* ---------- 首頁：模組卡片 ---------- */
+  .module-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  }
+  @media (max-width: 560px) { .module-grid { grid-template-columns: 1fr; } }
+  .module-card {
+    background: #fff; border-radius: 18px; padding: 20px;
+    display: flex; align-items: center; gap: 14px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04); border: 1.5px solid transparent;
+    transition: all .15s; text-align: left;
+  }
+  .module-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); border-color: #0071e3; }
+  .module-icon {
+    width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+    background: #eef6ff; display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .module-info { flex: 1; }
+  .module-name { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+  .module-count { font-size: 12.5px; color: #86868b; }
+  .module-arrow { color: #c7c7cc; font-size: 18px; }
+
+  /* ---------- 模組內：商品列表 ---------- */
+  .product-list { display: flex; flex-direction: column; gap: 10px; }
+  .product-row {
+    background: #fff; border-radius: 16px; padding: 16px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+    border: 1.5px solid transparent; transition: all .15s;
+  }
+  .product-row:hover { border-color: #0071e3; background: linear-gradient(135deg,#eef6ff,#f5faff); }
+  .product-code { font-size: 15.5px; font-weight: 700; letter-spacing: 0.02em; }
+  .product-status {
+    font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+  }
+  .product-status.pending { background: #fdf1e6; color: #b56a1a; }
+  .product-status.ready { background: #e7f7ee; color: #1a8a3c; }
+
+  /* ---------- 商品詳細（試算 / 建議書產出） ---------- */
+  .product-detail-card {
+    background: #fff; border-radius: 18px; padding: 28px 24px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  }
+  .product-detail-card .code-badge {
+    display: inline-block; font-size: 13px; font-weight: 700; color: #0071e3;
+    background: #eef6ff; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px;
+  }
+  .product-detail-card h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
+  .placeholder-box {
+    margin-top: 1.2rem; padding: 22px; border-radius: 14px;
+    background: #f9fafc; border: 1.5px dashed #d8dce3;
+    color: #6e6e73; font-size: 14px; line-height: 1.7;
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---------- 試算表單 ---------- */
+  .form-section { margin-top: 1.4rem; }
+  .form-section + .form-section { margin-top: 1.8rem; padding-top: 1.4rem; border-top: 1px solid #eee; }
+  .form-section-title { font-size: 13px; font-weight: 700; color: #6e6e73; margin-bottom: 12px; letter-spacing: 0.02em; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 600; color: #444; }
+  .field-note { font-size: 12.5px; color: #86868b; margin-top: 6px; }
+  .age-hint {
+    margin-top: 8px; padding: 8px 12px; border-radius: 10px;
+    background: #eef6ff; color: #0071e3; font-size: 13px; font-weight: 600;
+  }
+  .field input[type="text"], .field input[type="number"], .field select {
+    padding: 10px 12px; border-radius: 10px; border: 1.5px solid #e5e5ea;
+    background: #f9f9fb; font-size: 14.5px; font-family: inherit; color: #1d1d1f;
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: #0071e3; background: #fff; box-shadow: 0 0 0 3px rgba(0,113,227,0.08);
+  }
+  .birth-row { display: flex; gap: 8px; align-items: center; }
+  .birth-row input { width: 100%; text-align: center; }
+  .birth-row span { font-size: 13px; color: #86868b; flex-shrink: 0; }
+  .radio-group { display: flex; gap: 10px; }
+  .radio-pill {
+    flex: 1; text-align: center; padding: 9px 10px; border-radius: 10px;
+    border: 1.5px solid #e5e5ea; background: #f9f9fb; font-size: 14px; font-weight: 600;
+    color: #444; cursor: pointer; transition: all .12s; user-select: none;
+  }
+  .radio-pill.active { background: #0071e3; border-color: #0071e3; color: #fff; }
+  details.advanced { margin-top: 1.4rem; }
+  details.advanced > summary {
+    cursor: pointer; font-size: 13px; font-weight: 700; color: #0071e3; list-style: none;
+  }
+  details.advanced > summary::-webkit-details-marker { display: none; }
+  details.advanced .form-grid { margin-top: 12px; }
+  .submit-btn {
+    margin-top: 1.6rem; width: 100%; padding: 13px; border: none; border-radius: 12px;
+    background: #0071e3; color: #fff; font-size: 15.5px; font-weight: 700; cursor: pointer;
+    transition: background .15s;
+  }
+  .submit-btn:hover { background: #0060c2; }
+  .submit-btn:disabled { background: #b9d7f5; cursor: not-allowed; }
+  .calc-error {
+    margin-top: 1rem; padding: 12px 14px; border-radius: 10px;
+    background: #fdeeec; color: #b3261e; font-size: 13.5px; display: none;
+  }
+  .calc-loading {
+    margin-top: 1.4rem; text-align: center; color: #86868b; font-size: 13.5px; display: none;
+  }
+
+  /* ---------- 試算結果 ---------- */
+  .result-box { margin-top: 1.8rem; padding-top: 1.6rem; border-top: 1px solid #eee; display: none; }
+  .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1.4rem; }
+  @media (max-width: 560px) { .summary-grid { grid-template-columns: 1fr; } }
+  .summary-tile { background: #f9fafc; border-radius: 12px; padding: 12px 14px; }
+  .summary-tile .label { font-size: 12px; color: #86868b; margin-bottom: 4px; }
+  .summary-tile .value { font-size: 17px; font-weight: 700; color: #1d1d1f; }
+  .scenario-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .scenario-tab {
+    padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    background: #f0f0f2; color: #555; cursor: pointer; border: none; font-family: inherit;
+  }
+  .scenario-tab.active { background: #0071e3; color: #fff; }
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #eee; max-height: 420px; overflow-y: auto; }
+  table.result-table { width: 100%; border-collapse: collapse; font-size: 15px; white-space: nowrap; }
+  table.result-table th {
+    position: sticky; top: 0; background: #f5f5f7; padding: 9px 12px; text-align: right;
+    font-weight: 700; color: #444; border-bottom: 1px solid #e5e5ea;
+  }
+  table.result-table th:first-child, table.result-table td:first-child { text-align: center; padding-right: 6px; }
+  table.result-table th:nth-child(2), table.result-table td:nth-child(2) { text-align: center; padding-left: 6px; }
+  table.result-table td { padding: 8px 12px; text-align: right; border-bottom: 1px solid #f2f2f4; }
+  table.result-table tr:nth-child(even) { background: #fafafc; }
+  .download-pdf-btn {
+    margin-top: 1.2rem; width: 100%; padding: 12px; border-radius: 12px;
+    background: #1a8a3c; color: #fff; font-size: 15px; font-weight: 700; border: none;
+    cursor: pointer; transition: background .15s;
+  }
+  .download-pdf-btn:hover { background: #157030; }
+  .download-pdf-btn:disabled { background: #a8d4b8; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<script src="auth.js"></script>
+
+  <!-- ========== 主內容 ========== -->
+  <div class="container" id="main-content" style="display:none;">
+
+    <!-- 頂部品牌列 -->
+    <div style="display:flex; align-items:center; justify-content:center; margin-bottom:1.5rem;">
+      <img src="avatar.png" alt="頭像" style="width:112px; height:112px; border-radius:50%; object-fit:cover; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.15);">
+    </div>
+
+    <!-- 首頁：模組列表 -->
+    <div class="view active" id="view-home">
+      <a class="back-link" href="index.html">← 返回首頁</a>
+      <h1 class="page-title" style="text-align:center;">建議書系統</h1>
+      <div class="subtitle" style="text-align:center;">選擇商品分類，開始試算並產出建議書</div>
+      <div class="module-grid" id="module-grid"></div>
+    </div>
+
+    <!-- 模組內：商品列表 -->
+    <div class="view" id="view-module">
+      <button class="back-link" onclick="showHome()">← 返回首頁</button>
+      <h1 class="page-title" id="module-title"></h1>
+      <div class="subtitle" id="module-subtitle"></div>
+      <div class="product-list" id="product-list"></div>
+    </div>
+
+    <!-- 商品詳細 -->
+    <div class="view" id="view-product">
+      <button class="back-link" onclick="showModule(currentModuleIndex)">← 返回上一頁</button>
+      <div class="product-detail-card">
+        <span class="code-badge" id="product-code-badge"></span>
+        <h2 id="product-name-title"></h2>
+        <div id="product-content"></div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  // ============================================================
+  // 商品模組資料
+  // 之後每個商品的建議書格式上傳後，可以在這裡把 status 改成 "ready"，
+  // 並在 view-product 對應的地方加上實際的試算輸入欄位與 PDF 產出邏輯。
+  // ============================================================
+  const MODULES = [
+    {
+      name: "保額型分紅",
+      icon: "💰",
+      products: [
+        { code: "PFA3", status: "ready", calcType: "PFA", apiProduct: "PFA3", paymentTerm: 3 },
+        { code: "PFA6", status: "ready", calcType: "PFA", apiProduct: "PFA6", paymentTerm: 6 },
+        { code: "PFJ6", status: "pending" },
+        { code: "PFK1", status: "pending" },
+        { code: "PFK2", status: "pending" },
+      ]
+    },
+    {
+      name: "生存金（邊存邊領）",
+      icon: "📥",
+      products: [
+        { code: "PFE", status: "pending" },
+        { code: "PFI", status: "pending" },
+        { code: "PFC", status: "pending" },
+      ]
+    },
+    {
+      name: "長照/失智險",
+      icon: "🩺",
+      products: [
+        { code: "LTS", status: "ready", calcType: "LTS", apiProduct: "LTS" },
+        { code: "LTQ", status: "ready", calcType: "LTQT", apiProduct: "LTQ",
+          ageHint: "10年期 15足歲～70歲；20年期 15足歲～60歲；30年期 15足歲～50歲" },
+        { code: "LTT", status: "ready", calcType: "LTQT", apiProduct: "LTT",
+          ageHint: "10年期 15足歲～65歲；20年期 15足歲～55歲；30年期 15足歲～45歲" },
+        { code: "LTP", status: "ready", calcType: "LTQT", apiProduct: "LTP",
+          ageHint: "10年期 15足歲～65歲；20年期 15足歲～60歲；30年期 15足歲～50歲",
+          faceAmountDefault: 100, faceAmountMin: 30, faceAmountStep: 1,
+          faceRangeHint: "保額範圍：30 ~ 300 萬（實際上限依投保年齡可能調整，66歲以上不得承保）" },
+      ]
+    },
+    {
+      name: "重大傷病險",
+      icon: "🏥",
+      products: [
+        { code: "SDG", status: "ready", calcType: "SD", apiProduct: "SDG",
+          paymentTermOptions: [20],
+          ageHint: "20年期 0足歲～50歲",
+          faceAmountDefault: 100, faceAmountMin: 10, faceAmountStep: 1,
+          faceRangeHint: "保額範圍：10 ~ 500 萬（實際上限依投保年齡可能調整）",
+          hasMaturityBenefit: false },
+        { code: "SDH", status: "ready", calcType: "SD", apiProduct: "SDH",
+          paymentTermOptions: [10, 15, 20, 30],
+          ageHint: "10年期 0足歲～60歲；15年期 0足歲～55歲；20年期 0足歲～50歲；30年期 0足歲～40歲",
+          faceAmountDefault: 100, faceAmountMin: 10, faceAmountStep: 1,
+          faceRangeHint: "保額範圍：10 ~ 500 萬（實際上限依投保年齡可能調整）",
+          hasMaturityBenefit: true },
+        { code: "SDN", status: "ready", calcType: "SD", apiProduct: "SDN",
+          paymentTermOptions: [10, 15, 20, 30],
+          ageHint: "10年期 0足歲～60歲；15年期 0足歲～55歲；20年期 0足歲～50歲；30年期 0足歲～40歲",
+          faceAmountDefault: 100, faceAmountMin: 10, faceAmountStep: 1,
+          faceRangeHint: "保額範圍：10 ~ 500 萬（實際上限依投保年齡可能調整）",
+          hasMaturityBenefit: true },
+        { code: "SDJ", status: "ready", calcType: "SD", apiProduct: "SDJ",
+          paymentTermOptions: [20],
+          ageHint: "20年期 0足歲～50歲（保障至84歲）",
+          faceAmountDefault: 10, faceAmountMin: 10, faceAmountStep: 1,
+          faceRangeHint: "保額範圍：10 ~ 500 萬（實際上限依投保年齡可能調整）",
+          hasMaturityBenefit: true },
+        { code: "SDKA", status: "pending" },
+      ]
+    },
+    {
+      name: "男女防癌險",
+      icon: "🎗️",
+      products: [
+        { code: "CLZ", status: "ready", calcType: "CANCER", apiProduct: "CLZ", fixedGender: "男", genderLabel: "（男性專屬）" },
+        { code: "CLX", status: "ready", calcType: "CANCER", apiProduct: "CLX", fixedGender: "女", genderLabel: "（女性專屬）" },
+      ]
+    },
+  ];
+
+  let currentModuleIndex = null;
+
+  // 密碼鎖已改用共用的 auth.js / auth.css（跟首頁、理財工具共用同一道鎖）。
+
+  // ---------- 畫面切換 ----------
+  function switchView(id) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function showHome() {
+    currentModuleIndex = null;
+    switchView('view-home');
+  }
+
+  function showModule(index) {
+    currentModuleIndex = index;
+    const mod = MODULES[index];
+    document.getElementById('module-title').textContent = mod.name;
+    document.getElementById('module-subtitle').textContent = `共 ${mod.products.length} 項商品`;
+    const listEl = document.getElementById('product-list');
+    listEl.innerHTML = mod.products.map((p, i) => `
+      <div class="product-row" onclick="showProduct(${index}, ${i})">
+        <span class="product-code">${p.code}${p.genderLabel ? ` <span style="font-weight:400;color:#86868b;">${p.genderLabel}</span>` : ''}</span>
+        ${p.status === 'ready' ? '' : `<span class="product-status ${p.status}">尚未建置</span>`}
+      </div>
+    `).join('');
+    switchView('view-module');
+  }
+
+  function showProduct(moduleIndex, productIndex) {
+    currentModuleIndex = moduleIndex;
+    const mod = MODULES[moduleIndex];
+    const product = mod.products[productIndex];
+    document.getElementById('product-code-badge').textContent = product.code;
+    document.getElementById('product-name-title').textContent = `${mod.name} — ${product.code}`;
+    const contentEl = document.getElementById('product-content');
+
+    if (product.calcType === 'PFA') {
+      contentEl.innerHTML = renderPFAFormHTML(product);
+      initRadioGroups(contentEl);
+      document.getElementById('pfa-submit-btn').addEventListener('click', () => submitPFACalc(product));
+    } else if (product.calcType === 'CANCER') {
+      contentEl.innerHTML = renderCancerFormHTML(product);
+      document.getElementById('cancer-submit-btn').addEventListener('click', () => submitCancerCalc(product));
+      initCancerAgeHint();
+    } else if (product.calcType === 'LTS') {
+      contentEl.innerHTML = renderLTSFormHTML(product);
+      initRadioGroups(contentEl);
+      document.getElementById('lts-submit-btn').addEventListener('click', () => submitLTSCalc(product));
+      initLTSAgeHint();
+    } else if (product.calcType === 'LTQT') {
+      contentEl.innerHTML = renderLTQTFormHTML(product);
+      initRadioGroups(contentEl);
+      document.getElementById('ltqt-submit-btn').addEventListener('click', () => submitLTQTCalc(product));
+      initLTQTAgeHint();
+    } else if (product.calcType === 'SD') {
+      contentEl.innerHTML = renderSDFormHTML(product);
+      initRadioGroups(contentEl);
+      document.getElementById('sd-submit-btn').addEventListener('click', () => submitSDCalc(product));
+      initSDAgeHint();
+    } else {
+      contentEl.innerHTML = `<div class="placeholder-box">${
+        product.status === 'ready'
+          ? '（此商品的試算功能建置中）'
+          : '此商品的建議書格式尚未上傳。上傳格式後，這裡會提供客戶資料輸入欄位、保費／保額試算，並可一鍵產出 PDF 建議書。'
+      }</div>`;
+    }
+    switchView('view-product');
+  }
+
+  // ============================================================
+  // PFA3 / PFA6 試算表單（呼叫後端 LibreOffice 重算引擎）
+  // ============================================================
+  const PFA_API_BASE = "https://proposal-calculator-backend-production.up.railway.app";
+
+  function renderPFAFormHTML(product) {
+    return `
+      <div class="form-section">
+        <div class="form-section-title">被保險人基本資料</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>姓名</label>
+            <input type="text" id="pfa-name" value="客戶">
+          </div>
+          <div class="field">
+            <label>性別</label>
+            <div class="radio-group" data-target="pfa-gender">
+              <div class="radio-pill active" data-value="女">女</div>
+              <div class="radio-pill" data-value="男">男</div>
+            </div>
+            <input type="hidden" id="pfa-gender" value="女">
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>生日（民國）</label>
+          <div class="birth-row">
+            <input type="number" id="pfa-birth-year" placeholder="年" min="1" max="200">
+            <span>年</span>
+            <input type="number" id="pfa-birth-month" placeholder="月" min="1" max="12">
+            <span>月</span>
+            <input type="number" id="pfa-birth-day" placeholder="日" min="1" max="31">
+            <span>日</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">保單設定</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>主約繳費年期</label>
+            <input type="text" value="${product.paymentTerm} 年期（${product.code}）" disabled style="background:#f0f0f2;color:#86868b;">
+          </div>
+          <div class="field">
+            <label>繳別</label>
+            <select id="pfa-payment-freq">
+              <option value="年繳">年繳</option>
+              <option value="半年繳">半年繳</option>
+              <option value="季繳">季繳</option>
+              <option value="月繳">月繳</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>試算依據</label>
+          <div class="radio-group" data-target="pfa-input-mode">
+            <div class="radio-pill active" data-value="face_amount">用保額試算</div>
+            <div class="radio-pill" data-value="premium">用保費試算</div>
+          </div>
+          <input type="hidden" id="pfa-input-mode" value="face_amount">
+        </div>
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="field" id="pfa-face-amount-field">
+            <label>保額（萬元）</label>
+            <input type="number" id="pfa-face-amount" value="30" min="0" step="0.1">
+          </div>
+          <div class="field" id="pfa-premium-field" style="display:none;">
+            <label>希望年繳保費（元，未折扣前）</label>
+            <input type="number" id="pfa-premium" value="100000" min="0" step="1000">
+          </div>
+          <div class="field">
+            <label>建議書標示紅利等級</label>
+            <select id="pfa-dividend-scenario">
+              <option value="中分紅">中分紅（最可能紅利）</option>
+              <option value="高分紅">高分紅</option>
+              <option value="低分紅">低分紅（較低紅利）</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>進階選項（要保人關係／保費折扣／身故給付分期）</summary>
+        <div class="form-grid">
+          <div class="field">
+            <label>要保人與被保險人關係</label>
+            <select id="pfa-relationship">
+              <option value="同被保險人">同被保險人</option>
+              <option value="要保人同被保險人">要保人同被保險人</option>
+              <option value="繳款人同被保險人">繳款人同被保險人</option>
+              <option value="繳款人同要保人">繳款人同要保人</option>
+              <option value="與被保險人不同人">與被保險人不同人</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>身份別保費折扣</label>
+            <select id="pfa-discount">
+              <option value="無">無</option>
+              <option value="員工轉帳件">員工轉帳件</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>指定保險金分期給付比例（%，0表示不分期）</label>
+            <input type="number" id="pfa-death-benefit-pct" value="0" min="0" max="100">
+          </div>
+          <div class="field">
+            <label>分期給付期間（年）</label>
+            <select id="pfa-installment-period">
+              <option value="20">20</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <button class="submit-btn" id="pfa-submit-btn">開始試算</button>
+      <div class="calc-error" id="pfa-error"></div>
+      <div class="calc-loading" id="pfa-loading">試算中，正在重新計算官方 Excel 建議書，請稍候（約 10-20 秒）...</div>
+
+      <div class="result-box" id="pfa-result-box">
+        <div class="summary-grid" id="pfa-summary-grid"></div>
+        <div class="scenario-tabs" id="pfa-scenario-tabs"></div>
+        <div class="table-wrap"><table class="result-table" id="pfa-result-table"></table></div>
+        <button class="download-pdf-btn" id="pfa-download-btn" style="display:none;">📄 下載 PDF 建議書</button>
+      </div>
+    `;
+  }
+
+  function initRadioGroups(root) {
+    root.querySelectorAll('.radio-group').forEach(group => {
+      const targetInput = document.getElementById(group.dataset.target);
+      group.querySelectorAll('.radio-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          group.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          targetInput.value = pill.dataset.value;
+          if (group.dataset.target === 'pfa-input-mode') {
+            const isFace = pill.dataset.value === 'face_amount';
+            document.getElementById('pfa-face-amount-field').style.display = isFace ? '' : 'none';
+            document.getElementById('pfa-premium-field').style.display = isFace ? 'none' : '';
+          }
+        });
+      });
+    });
+  }
+
+  let pfaLastResult = null;
+
+  async function submitPFACalc(product) {
+    const errorEl = document.getElementById('pfa-error');
+    const loadingEl = document.getElementById('pfa-loading');
+    const resultBox = document.getElementById('pfa-result-box');
+    const btn = document.getElementById('pfa-submit-btn');
+    errorEl.style.display = 'none';
+    resultBox.style.display = 'none';
+
+    const birthYear = document.getElementById('pfa-birth-year').value;
+    const birthMonth = document.getElementById('pfa-birth-month').value;
+    const birthDay = document.getElementById('pfa-birth-day').value;
+    if (!birthYear || !birthMonth || !birthDay) {
+      errorEl.textContent = '請填寫完整的生日（民國年／月／日）';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const inputMode = document.getElementById('pfa-input-mode').value;
+    const payload = {
+      name: document.getElementById('pfa-name').value || '客戶',
+      gender: document.getElementById('pfa-gender').value,
+      birth_year: Number(birthYear),
+      birth_month: Number(birthMonth),
+      birth_day: Number(birthDay),
+      payment_term: product.paymentTerm,
+      payment_freq: document.getElementById('pfa-payment-freq').value,
+      dividend_scenario: document.getElementById('pfa-dividend-scenario').value,
+      input_mode: inputMode,
+      relationship: document.getElementById('pfa-relationship').value,
+      discount: document.getElementById('pfa-discount').value,
+      death_benefit_pct: Number(document.getElementById('pfa-death-benefit-pct').value || 0),
+      installment_period: Number(document.getElementById('pfa-installment-period').value),
+      want_pdf: true,
+    };
+    if (inputMode === 'face_amount') {
+      payload.face_amount_wan = Number(document.getElementById('pfa-face-amount').value);
+    } else {
+      payload.premium_amount = Number(document.getElementById('pfa-premium').value);
+    }
+
+    btn.disabled = true;
+    loadingEl.style.display = 'block';
+
+    try {
+      const resp = await fetch(`${PFA_API_BASE}/api/${product.apiProduct}/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || '試算失敗，請確認輸入內容');
+      }
+      pfaLastResult = data;
+      renderPFAResults(data);
+    } catch (err) {
+      errorEl.textContent = '試算失敗：' + err.message + '（若持續發生，可能是後端服務剛啟動需要暖機，請稍後再試一次）';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  }
+
+  const PFA_SCENARIO_ORDER = ['most_likely', 'lower', 'zero_possible'];
+  const PFA_TABLE_COLUMNS = [
+    { key: 'policy_year', label: '保單年度' },
+    { key: 'age', label: '保險年齡' },
+    { key: 'annual_premium', label: '年度保費' },
+    { key: 'cum_premium', label: '累計保費' },
+    { key: 'death_benefit', label: '身故保障' },
+    { key: 'cash_value', label: '解約金' },
+    { key: 'annual_dividend', label: '年度紅利' },
+    { key: 'total_amount', label: '總保額' },
+  ];
+
+  function fmtNum(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    return Math.round(v).toLocaleString('zh-TW');
+  }
+
+  function renderPFAResults(data) {
+    const summaryEl = document.getElementById('pfa-summary-grid');
+    const p = data.premiums || {};
+    summaryEl.innerHTML = `
+      <div class="summary-tile"><div class="label">最終保額（萬元）</div><div class="value">${fmtNum(p.final_face_amount_wan)}</div></div>
+      <div class="summary-tile"><div class="label">首期實繳保費</div><div class="value">${fmtNum(p.first_period_premium)}</div></div>
+      <div class="summary-tile"><div class="label">首年實繳保費</div><div class="value">${fmtNum(p.first_year_premium)}</div></div>
+      <div class="summary-tile"><div class="label">續年實繳保費</div><div class="value">${fmtNum(p.renewal_year_premium)}</div></div>
+    `;
+
+    const tabsEl = document.getElementById('pfa-scenario-tabs');
+    tabsEl.innerHTML = PFA_SCENARIO_ORDER.map((key, i) => {
+      const t = data.tables[key];
+      return `<button class="scenario-tab ${i === 0 ? 'active' : ''}" data-key="${key}">${t ? t.label : key}</button>`;
+    }).join('');
+    tabsEl.querySelectorAll('.scenario-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabsEl.querySelectorAll('.scenario-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        renderPFATable(data.tables[tab.dataset.key]);
+      });
+    });
+    renderPFATable(data.tables[PFA_SCENARIO_ORDER[0]]);
+
+    const downloadBtn = document.getElementById('pfa-download-btn');
+    if (data.pdf_base64) {
+      downloadBtn.style.display = 'block';
+      downloadBtn.onclick = () => downloadPFAPdf(data.pdf_base64);
+    } else {
+      downloadBtn.style.display = 'none';
+    }
+
+    document.getElementById('pfa-result-box').style.display = 'block';
+  }
+
+  function renderPFATable(tableData) {
+    const tableEl = document.getElementById('pfa-result-table');
+    if (!tableData || !tableData.rows || !tableData.rows.length) {
+      tableEl.innerHTML = '<tr><td>無資料</td></tr>';
+      return;
+    }
+    const head = '<tr>' + PFA_TABLE_COLUMNS.map(c => `<th>${c.label}</th>`).join('') + '</tr>';
+    const body = tableData.rows.map(row =>
+      '<tr>' + PFA_TABLE_COLUMNS.map(c => `<td>${c.key === 'policy_year' || c.key === 'age' ? (row[c.key] === null || row[c.key] === undefined ? '—' : Math.round(row[c.key])) : fmtNum(row[c.key])}</td>`).join('') + '</tr>'
+    ).join('');
+    tableEl.innerHTML = head + body;
+  }
+
+  function downloadPFAPdf(base64) {
+    downloadPdfBlob(base64, '建議書.pdf');
+  }
+
+  function downloadPdfBlob(base64, filename) {
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  // ============================================================
+  // CLZ / CLX 防癌險試算表單（無分紅，單一保單年度明細表）
+  // ============================================================
+  const CANCER_API_BASE = PFA_API_BASE;
+
+  function renderCancerFormHTML(product) {
+    return `
+      <div class="form-section">
+        <div class="form-section-title">被保險人基本資料（本商品限定：性別 ${product.fixedGender}）</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>姓名</label>
+            <input type="text" id="cancer-name" value="客戶">
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>生日（民國）</label>
+          <div class="birth-row">
+            <input type="number" id="cancer-birth-year" placeholder="年" min="1" max="200">
+            <span>年</span>
+            <input type="number" id="cancer-birth-month" placeholder="月" min="1" max="12">
+            <span>月</span>
+            <input type="number" id="cancer-birth-day" placeholder="日" min="1" max="31">
+            <span>日</span>
+          </div>
+          <div class="age-hint" id="cancer-age-hint" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">保單設定</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>繳費年期</label>
+            <select id="cancer-payment-term">
+              <option value="20">20 年</option>
+              <option value="10">10 年</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>繳別</label>
+            <select id="cancer-payment-freq">
+              <option value="年繳">年繳</option>
+              <option value="半年繳">半年繳</option>
+              <option value="季繳">季繳</option>
+              <option value="月繳">月繳</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-note">投保年齡：10年期 18足歲～60歲；20年期 18足歲～50歲</div>
+        <div class="field" style="margin-top:14px;">
+          <label>保額（萬元）</label>
+          <input type="number" id="cancer-face-amount" value="50" min="0" step="1">
+        </div>
+        <div class="field-note">保額範圍：50 ~ 300 萬</div>
+      </div>
+
+      <details class="advanced">
+        <summary>進階選項（繳費方式／保費折扣）</summary>
+        <div class="form-grid">
+          <div class="field">
+            <label>首期繳費方式</label>
+            <select id="cancer-first-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="匯款">匯款</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>續期繳費方式</label>
+            <select id="cancer-renewal-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="自行繳費">自行繳費</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>專案保費折扣</label>
+            <select id="cancer-discount">
+              <option value="無">無</option>
+              <option value="員工轉帳件">員工轉帳件</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <button class="submit-btn" id="cancer-submit-btn">開始試算</button>
+      <div class="calc-error" id="cancer-error"></div>
+      <div class="calc-loading" id="cancer-loading">試算中，正在重新計算官方 Excel 建議書，請稍候...</div>
+
+      <div class="result-box" id="cancer-result-box">
+        <div class="summary-grid" id="cancer-summary-grid"></div>
+        <div class="table-wrap"><table class="result-table" id="cancer-result-table"></table></div>
+        <button class="download-pdf-btn" id="cancer-download-btn" style="display:none;">📄 下載 PDF 建議書</button>
+      </div>
+    `;
+  }
+
+  // ---- 保險年齡／實際年齡即時試算（與官方 Excel 之六個月進位規則一致） ----
+  // 保險年齡：與最近一次生日相差超過六個月（含當日已過生日者以六個月整為界）即加算一歲；
+  // 實際年齡：單純的足歲（週歲）。
+  function calcInsuranceAndActualAge(rocYear, month, day, today) {
+    const adBirthYear = Number(rocYear) + 1911;
+    const birth = new Date(adBirthYear, Number(month) - 1, Number(day));
+    if (isNaN(birth.getTime())) return null;
+
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth() + 1;
+    const todayDay = today.getDate();
+    const birthYear = birth.getFullYear();
+    const birthMonth = birth.getMonth() + 1;
+    const birthDay = birth.getDate();
+
+    if (birth > today) return null; // 尚未出生
+
+    // 實際年齡（足歲）
+    let actualAge = todayYear - birthYear;
+    if (todayMonth < birthMonth || (todayMonth === birthMonth && todayDay < birthDay)) {
+      actualAge -= 1;
+    }
+
+    // 保險年齡（滿六個月進位制，邏輯對應原始 Excel 公式）
+    let insuranceAge;
+    if (todayMonth < birthMonth) {
+      const diff = todayMonth + 12 - birthMonth;
+      insuranceAge = (diff > 6 || (diff === 6 && todayDay > birthDay))
+        ? (todayYear - 1 - birthYear + 1)
+        : (todayYear - 1 - birthYear);
+    } else {
+      const diff = todayMonth - birthMonth;
+      insuranceAge = (diff > 6 || (diff === 6 && todayDay > birthDay))
+        ? (todayYear - birthYear + 1)
+        : (todayYear - birthYear);
+    }
+
+    return { insuranceAge, actualAge };
+  }
+
+  function initCancerAgeHint() {
+    const yearEl = document.getElementById('cancer-birth-year');
+    const monthEl = document.getElementById('cancer-birth-month');
+    const dayEl = document.getElementById('cancer-birth-day');
+    const hintEl = document.getElementById('cancer-age-hint');
+    if (!yearEl || !monthEl || !dayEl || !hintEl) return;
+
+    function update() {
+      const y = yearEl.value, m = monthEl.value, d = dayEl.value;
+      if (!y || !m || !d) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      const result = calcInsuranceAndActualAge(y, m, d, new Date());
+      if (!result) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      hintEl.textContent = `保險年齡 ${result.insuranceAge} 歲　實際年齡 ${result.actualAge} 歲`;
+      hintEl.style.display = 'block';
+    }
+
+    [yearEl, monthEl, dayEl].forEach(el => el.addEventListener('input', update));
+  }
+
+  const CANCER_TABLE_COLUMNS = [
+    { key: 'policy_year', label: '保單年度' },
+    { key: 'age', label: '保險年齡' },
+    { key: 'annual_premium', label: '年度保費' },
+    { key: 'cum_premium', label: '累計保費' },
+    { key: 'death_benefit', label: '身故保障' },
+  ];
+
+  async function submitCancerCalc(product) {
+    const errorEl = document.getElementById('cancer-error');
+    const loadingEl = document.getElementById('cancer-loading');
+    const resultBox = document.getElementById('cancer-result-box');
+    const btn = document.getElementById('cancer-submit-btn');
+    errorEl.style.display = 'none';
+    resultBox.style.display = 'none';
+
+    const birthYear = document.getElementById('cancer-birth-year').value;
+    const birthMonth = document.getElementById('cancer-birth-month').value;
+    const birthDay = document.getElementById('cancer-birth-day').value;
+    if (!birthYear || !birthMonth || !birthDay) {
+      errorEl.textContent = '請填寫完整的生日（民國年／月／日）';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const payload = {
+      name: document.getElementById('cancer-name').value || '客戶',
+      birth_year: Number(birthYear),
+      birth_month: Number(birthMonth),
+      birth_day: Number(birthDay),
+      payment_term: Number(document.getElementById('cancer-payment-term').value),
+      payment_freq: document.getElementById('cancer-payment-freq').value,
+      face_amount_wan: Number(document.getElementById('cancer-face-amount').value),
+      first_payment_method: document.getElementById('cancer-first-payment-method').value,
+      renewal_payment_method: document.getElementById('cancer-renewal-payment-method').value,
+      discount: document.getElementById('cancer-discount').value,
+      want_pdf: true,
+    };
+
+    btn.disabled = true;
+    loadingEl.style.display = 'block';
+
+    try {
+      const resp = await fetch(`${CANCER_API_BASE}/api/${product.apiProduct}/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || '試算失敗，請確認輸入內容');
+      }
+      renderCancerResults(data);
+    } catch (err) {
+      errorEl.textContent = '試算失敗：' + err.message + '（若持續發生，可能是後端服務剛啟動需要暖機，請稍後再試一次）';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  }
+
+  function renderCancerResults(data) {
+    const summaryEl = document.getElementById('cancer-summary-grid');
+    const p = data.premiums || {};
+    summaryEl.innerHTML = `
+      <div class="summary-tile"><div class="label">保額（萬元）</div><div class="value">${fmtNum(p.final_face_amount_wan)}</div></div>
+      <div class="summary-tile"><div class="label">年繳保費</div><div class="value">${fmtNum(p.annual_premium_gross)}</div></div>
+      <div class="summary-tile"><div class="label">首年實繳保費</div><div class="value">${fmtNum(p.first_year_premium)}</div></div>
+      <div class="summary-tile"><div class="label">續年實繳保費</div><div class="value">${fmtNum(p.renewal_year_premium)}</div></div>
+    `;
+
+    const tableEl = document.getElementById('cancer-result-table');
+    const rows = (data.tables && data.tables.main && data.tables.main.rows) || [];
+    const head = '<tr>' + CANCER_TABLE_COLUMNS.map(c => `<th>${c.label}</th>`).join('') + '</tr>';
+    const body = rows.map(row =>
+      '<tr>' + CANCER_TABLE_COLUMNS.map(c => `<td>${c.key === 'policy_year' || c.key === 'age' ? (row[c.key] === null || row[c.key] === undefined ? '—' : Math.round(row[c.key])) : fmtNum(row[c.key])}</td>`).join('') + '</tr>'
+    ).join('');
+    tableEl.innerHTML = head + body;
+
+    const downloadBtn = document.getElementById('cancer-download-btn');
+    if (data.pdf_base64) {
+      downloadBtn.style.display = 'block';
+      downloadBtn.onclick = () => downloadPdfBlob(data.pdf_base64, '建議書.pdf');
+    } else {
+      downloadBtn.style.display = 'none';
+    }
+
+    document.getElementById('cancer-result-box').style.display = 'block';
+  }
+
+  // ============================================================
+  // LTS（詠馨久久長期照顧終身壽險）試算表單
+  // ============================================================
+  const LTS_API_BASE = PFA_API_BASE;
+
+  function renderLTSFormHTML(product) {
+    return `
+      <div class="form-section">
+        <div class="form-section-title">被保險人基本資料</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>姓名</label>
+            <input type="text" id="lts-name" value="客戶">
+          </div>
+          <div class="field">
+            <label>性別</label>
+            <div class="radio-group" data-target="lts-gender">
+              <div class="radio-pill active" data-value="女">女</div>
+              <div class="radio-pill" data-value="男">男</div>
+            </div>
+            <input type="hidden" id="lts-gender" value="女">
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>生日（民國）</label>
+          <div class="birth-row">
+            <input type="number" id="lts-birth-year" placeholder="年" min="1" max="200">
+            <span>年</span>
+            <input type="number" id="lts-birth-month" placeholder="月" min="1" max="12">
+            <span>月</span>
+            <input type="number" id="lts-birth-day" placeholder="日" min="1" max="31">
+            <span>日</span>
+          </div>
+          <div class="age-hint" id="lts-age-hint" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">保單設定</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>繳費年期</label>
+            <select id="lts-payment-term">
+              <option value="30">30 年</option>
+              <option value="20">20 年</option>
+              <option value="10">10 年</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>繳別</label>
+            <select id="lts-payment-freq">
+              <option value="年繳">年繳</option>
+              <option value="半年繳">半年繳</option>
+              <option value="季繳">季繳</option>
+              <option value="月繳">月繳</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-note">投保年齡：10年期 15~65歲；20年期 15~60歲；30年期 15~50歲</div>
+        <div class="field" style="margin-top:14px;">
+          <label>保額（萬元）</label>
+          <input type="number" id="lts-face-amount" value="2" min="0" step="0.1">
+        </div>
+        <div class="field-note">保額範圍：0.5 ~ 5 萬（實際上限依投保年齡可能調整，61歲以上上限降為 3 萬）</div>
+      </div>
+
+      <details class="advanced">
+        <summary>進階選項（繳費方式／保費折扣）</summary>
+        <div class="form-grid">
+          <div class="field">
+            <label>首期繳費方式</label>
+            <select id="lts-first-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="匯款">匯款</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>續期繳費方式</label>
+            <select id="lts-renewal-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="自行繳費">自行繳費</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>專案保費折扣</label>
+            <select id="lts-discount">
+              <option value="無">無</option>
+              <option value="員工轉帳件">員工轉帳件</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <button class="submit-btn" id="lts-submit-btn">開始試算</button>
+      <div class="calc-error" id="lts-error"></div>
+      <div class="calc-loading" id="lts-loading">試算中，正在重新計算官方 Excel 建議書，請稍候...</div>
+
+      <div class="result-box" id="lts-result-box">
+        <div class="summary-grid" id="lts-summary-grid"></div>
+        <div class="table-wrap"><table class="result-table" id="lts-result-table"></table></div>
+        <button class="download-pdf-btn" id="lts-download-btn" style="display:none;">📄 下載 PDF 建議書</button>
+      </div>
+    `;
+  }
+
+  function initLTSAgeHint() {
+    const yearEl = document.getElementById('lts-birth-year');
+    const monthEl = document.getElementById('lts-birth-month');
+    const dayEl = document.getElementById('lts-birth-day');
+    const hintEl = document.getElementById('lts-age-hint');
+    if (!yearEl || !monthEl || !dayEl || !hintEl) return;
+
+    function update() {
+      const y = yearEl.value, m = monthEl.value, d = dayEl.value;
+      if (!y || !m || !d) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      const result = calcInsuranceAndActualAge(y, m, d, new Date());
+      if (!result) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      hintEl.textContent = `保險年齡 ${result.insuranceAge} 歲　實際年齡 ${result.actualAge} 歲`;
+      hintEl.style.display = 'block';
+    }
+
+    [yearEl, monthEl, dayEl].forEach(el => el.addEventListener('input', update));
+  }
+
+  const LTS_TABLE_COLUMNS = [
+    { key: 'policy_year', label: '保單年度' },
+    { key: 'age', label: '保險年齡' },
+    { key: 'annual_premium', label: '年度保費' },
+    { key: 'cum_premium', label: '累計保費' },
+    { key: 'death_benefit', label: '身故保障' },
+    { key: 'cash_value', label: '年度末解約金' },
+    { key: 'reduced_paid_up', label: '減額繳清保額' },
+  ];
+
+  async function submitLTSCalc(product) {
+    const errorEl = document.getElementById('lts-error');
+    const loadingEl = document.getElementById('lts-loading');
+    const resultBox = document.getElementById('lts-result-box');
+    const btn = document.getElementById('lts-submit-btn');
+    errorEl.style.display = 'none';
+    resultBox.style.display = 'none';
+
+    const birthYear = document.getElementById('lts-birth-year').value;
+    const birthMonth = document.getElementById('lts-birth-month').value;
+    const birthDay = document.getElementById('lts-birth-day').value;
+    if (!birthYear || !birthMonth || !birthDay) {
+      errorEl.textContent = '請填寫完整的生日（民國年／月／日）';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const payload = {
+      name: document.getElementById('lts-name').value || '客戶',
+      gender: document.getElementById('lts-gender').value,
+      birth_year: Number(birthYear),
+      birth_month: Number(birthMonth),
+      birth_day: Number(birthDay),
+      payment_term: Number(document.getElementById('lts-payment-term').value),
+      payment_freq: document.getElementById('lts-payment-freq').value,
+      face_amount_wan: Number(document.getElementById('lts-face-amount').value),
+      first_payment_method: document.getElementById('lts-first-payment-method').value,
+      renewal_payment_method: document.getElementById('lts-renewal-payment-method').value,
+      discount: document.getElementById('lts-discount').value,
+      want_pdf: true,
+    };
+
+    btn.disabled = true;
+    loadingEl.style.display = 'block';
+
+    try {
+      const resp = await fetch(`${LTS_API_BASE}/api/${product.apiProduct}/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || '試算失敗，請確認輸入內容');
+      }
+      renderLTSResults(data);
+    } catch (err) {
+      errorEl.textContent = '試算失敗：' + err.message + '（若持續發生，可能是後端服務剛啟動需要暖機，請稍後再試一次）';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  }
+
+  function renderLTSResults(data) {
+    const summaryEl = document.getElementById('lts-summary-grid');
+    const p = data.premiums || {};
+    summaryEl.innerHTML = `
+      <div class="summary-tile"><div class="label">保額（萬元）</div><div class="value">${fmtNum(p.final_face_amount_wan)}</div></div>
+      <div class="summary-tile"><div class="label">年繳保費</div><div class="value">${fmtNum(p.annual_premium_gross)}</div></div>
+      <div class="summary-tile"><div class="label">首年實繳保費</div><div class="value">${fmtNum(p.first_year_premium)}</div></div>
+      <div class="summary-tile"><div class="label">續年實繳保費</div><div class="value">${fmtNum(p.renewal_year_premium)}</div></div>
+    `;
+
+    const tableEl = document.getElementById('lts-result-table');
+    const rows = (data.tables && data.tables.main && data.tables.main.rows) || [];
+    const head = '<tr>' + LTS_TABLE_COLUMNS.map(c => `<th>${c.label}</th>`).join('') + '</tr>';
+    const body = rows.map(row =>
+      '<tr>' + LTS_TABLE_COLUMNS.map(c => `<td>${c.key === 'policy_year' || c.key === 'age' ? (row[c.key] === null || row[c.key] === undefined ? '—' : Math.round(row[c.key])) : fmtNum(row[c.key])}</td>`).join('') + '</tr>'
+    ).join('');
+    tableEl.innerHTML = head + body;
+
+    const downloadBtn = document.getElementById('lts-download-btn');
+    if (data.pdf_base64) {
+      downloadBtn.style.display = 'block';
+      downloadBtn.onclick = () => downloadPdfBlob(data.pdf_base64, '建議書.pdf');
+    } else {
+      downloadBtn.style.display = 'none';
+    }
+
+    document.getElementById('lts-result-box').style.display = 'block';
+  }
+
+  // ---------- LTQ（連馨久久）／ LTT（順馨久久）長期照顧終身健康保險 ----------
+  const LTQT_API_BASE = PFA_API_BASE;
+
+  function renderLTQTFormHTML(product) {
+    return `
+      <div class="form-section">
+        <div class="form-section-title">被保險人基本資料</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>姓名</label>
+            <input type="text" id="ltqt-name" value="客戶">
+          </div>
+          <div class="field">
+            <label>性別</label>
+            <div class="radio-group" data-target="ltqt-gender">
+              <div class="radio-pill active" data-value="女">女</div>
+              <div class="radio-pill" data-value="男">男</div>
+            </div>
+            <input type="hidden" id="ltqt-gender" value="女">
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>生日（民國）</label>
+          <div class="birth-row">
+            <input type="number" id="ltqt-birth-year" placeholder="年" min="1" max="200">
+            <span>年</span>
+            <input type="number" id="ltqt-birth-month" placeholder="月" min="1" max="12">
+            <span>月</span>
+            <input type="number" id="ltqt-birth-day" placeholder="日" min="1" max="31">
+            <span>日</span>
+          </div>
+          <div class="age-hint" id="ltqt-age-hint" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">保單設定</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>繳費年期</label>
+            <select id="ltqt-payment-term">
+              <option value="30">30 年</option>
+              <option value="20">20 年</option>
+              <option value="10">10 年</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>繳別</label>
+            <select id="ltqt-payment-freq">
+              <option value="年繳">年繳</option>
+              <option value="半年繳">半年繳</option>
+              <option value="季繳">季繳</option>
+              <option value="月繳">月繳</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-note">投保年齡：${product.ageHint || ''}</div>
+        <div class="field" style="margin-top:14px;">
+          <label>保額（萬元）</label>
+          <input type="number" id="ltqt-face-amount" value="${product.faceAmountDefault ?? 2}" min="${product.faceAmountMin ?? 0}" step="${product.faceAmountStep ?? 0.1}">
+        </div>
+        <div class="field-note">${product.faceRangeHint || '保額範圍：0.5 ~ 5 萬（實際上限依投保年齡可能調整，61歲以上上限降為 3 萬）'}</div>
+      </div>
+
+      <details class="advanced">
+        <summary>進階選項（繳費方式／保費折扣）</summary>
+        <div class="form-grid">
+          <div class="field">
+            <label>首期繳費方式</label>
+            <select id="ltqt-first-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="匯款">匯款</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>續期繳費方式</label>
+            <select id="ltqt-renewal-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="自行繳費">自行繳費</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>專案保費折扣</label>
+            <select id="ltqt-discount">
+              <option value="無">無</option>
+              <option value="員工轉帳件">員工轉帳件</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <button class="submit-btn" id="ltqt-submit-btn">開始試算</button>
+      <div class="calc-error" id="ltqt-error"></div>
+      <div class="calc-loading" id="ltqt-loading">試算中，正在重新計算官方 Excel 建議書，請稍候...</div>
+
+      <div class="result-box" id="ltqt-result-box">
+        <div class="summary-grid" id="ltqt-summary-grid"></div>
+        <div class="table-wrap"><table class="result-table" id="ltqt-result-table"></table></div>
+        <button class="download-pdf-btn" id="ltqt-download-btn" style="display:none;">📄 下載 PDF 建議書</button>
+      </div>
+    `;
+  }
+
+  function initLTQTAgeHint() {
+    const yearEl = document.getElementById('ltqt-birth-year');
+    const monthEl = document.getElementById('ltqt-birth-month');
+    const dayEl = document.getElementById('ltqt-birth-day');
+    const hintEl = document.getElementById('ltqt-age-hint');
+    if (!yearEl || !monthEl || !dayEl || !hintEl) return;
+
+    function update() {
+      const y = yearEl.value, m = monthEl.value, d = dayEl.value;
+      if (!y || !m || !d) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      const result = calcInsuranceAndActualAge(y, m, d, new Date());
+      if (!result) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      hintEl.textContent = `保險年齡 ${result.insuranceAge} 歲　實際年齡 ${result.actualAge} 歲`;
+      hintEl.style.display = 'block';
+    }
+
+    [yearEl, monthEl, dayEl].forEach(el => el.addEventListener('input', update));
+  }
+
+  const LTQT_TABLE_COLUMNS = [
+    { key: 'policy_year', label: '保單年度' },
+    { key: 'age', label: '保險年齡' },
+    { key: 'annual_premium', label: '年度保費' },
+    { key: 'cum_premium', label: '累計保費' },
+    { key: 'death_benefit', label: '身故/完全失能保障' },
+    { key: 'cash_value', label: '年度末解約金' },
+    { key: 'reduced_paid_up', label: '減額繳清保額' },
+  ];
+
+  async function submitLTQTCalc(product) {
+    const errorEl = document.getElementById('ltqt-error');
+    const loadingEl = document.getElementById('ltqt-loading');
+    const resultBox = document.getElementById('ltqt-result-box');
+    const btn = document.getElementById('ltqt-submit-btn');
+    errorEl.style.display = 'none';
+    resultBox.style.display = 'none';
+
+    const birthYear = document.getElementById('ltqt-birth-year').value;
+    const birthMonth = document.getElementById('ltqt-birth-month').value;
+    const birthDay = document.getElementById('ltqt-birth-day').value;
+    if (!birthYear || !birthMonth || !birthDay) {
+      errorEl.textContent = '請填寫完整的生日（民國年／月／日）';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const payload = {
+      name: document.getElementById('ltqt-name').value || '客戶',
+      gender: document.getElementById('ltqt-gender').value,
+      birth_year: Number(birthYear),
+      birth_month: Number(birthMonth),
+      birth_day: Number(birthDay),
+      payment_term: Number(document.getElementById('ltqt-payment-term').value),
+      payment_freq: document.getElementById('ltqt-payment-freq').value,
+      face_amount_wan: Number(document.getElementById('ltqt-face-amount').value),
+      first_payment_method: document.getElementById('ltqt-first-payment-method').value,
+      renewal_payment_method: document.getElementById('ltqt-renewal-payment-method').value,
+      discount: document.getElementById('ltqt-discount').value,
+      want_pdf: true,
+    };
+
+    btn.disabled = true;
+    loadingEl.style.display = 'block';
+
+    try {
+      const resp = await fetch(`${LTQT_API_BASE}/api/${product.apiProduct}/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || '試算失敗，請確認輸入內容');
+      }
+      renderLTQTResults(data);
+    } catch (err) {
+      errorEl.textContent = '試算失敗：' + err.message + '（若持續發生，可能是後端服務剛啟動需要暖機，請稍後再試一次）';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  }
+
+  function renderLTQTResults(data) {
+    const summaryEl = document.getElementById('ltqt-summary-grid');
+    const p = data.premiums || {};
+    summaryEl.innerHTML = `
+      <div class="summary-tile"><div class="label">保額（萬元）</div><div class="value">${fmtNum(p.final_face_amount_wan)}</div></div>
+      <div class="summary-tile"><div class="label">年繳保費</div><div class="value">${fmtNum(p.annual_premium_gross)}</div></div>
+      <div class="summary-tile"><div class="label">首年實繳保費</div><div class="value">${fmtNum(p.first_year_premium)}</div></div>
+      <div class="summary-tile"><div class="label">續年實繳保費</div><div class="value">${fmtNum(p.renewal_year_premium)}</div></div>
+    `;
+
+    const tableEl = document.getElementById('ltqt-result-table');
+    const rows = (data.tables && data.tables.main && data.tables.main.rows) || [];
+    const head = '<tr>' + LTQT_TABLE_COLUMNS.map(c => `<th>${c.label}</th>`).join('') + '</tr>';
+    const body = rows.map(row =>
+      '<tr>' + LTQT_TABLE_COLUMNS.map(c => `<td>${c.key === 'policy_year' || c.key === 'age' ? (row[c.key] === null || row[c.key] === undefined ? '—' : Math.round(row[c.key])) : fmtNum(row[c.key])}</td>`).join('') + '</tr>'
+    ).join('');
+    tableEl.innerHTML = head + body;
+
+    const downloadBtn = document.getElementById('ltqt-download-btn');
+    if (data.pdf_base64) {
+      downloadBtn.style.display = 'block';
+      downloadBtn.onclick = () => downloadPdfBlob(data.pdf_base64, '建議書.pdf');
+    } else {
+      downloadBtn.style.display = 'none';
+    }
+
+    document.getElementById('ltqt-result-box').style.display = 'block';
+  }
+
+  // ============================================================
+  // SDG（醫保安心）/ SDH（金卡安心）/ SDJ（優卡安心）/ SDN（金卡順心）
+  // 重大傷病／特定傷病終身健康保險
+  // ============================================================
+  const SD_API_BASE = PFA_API_BASE;
+
+  function renderSDFormHTML(product) {
+    const termOptions = (product.paymentTermOptions || [20])
+      .map(t => `<option value="${t}">${t} 年</option>`).join('');
+    return `
+      <div class="form-section">
+        <div class="form-section-title">被保險人基本資料</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>姓名</label>
+            <input type="text" id="sd-name" value="客戶">
+          </div>
+          <div class="field">
+            <label>性別</label>
+            <div class="radio-group" data-target="sd-gender">
+              <div class="radio-pill active" data-value="女">女</div>
+              <div class="radio-pill" data-value="男">男</div>
+            </div>
+            <input type="hidden" id="sd-gender" value="女">
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>生日（民國）</label>
+          <div class="birth-row">
+            <input type="number" id="sd-birth-year" placeholder="年" min="1" max="200">
+            <span>年</span>
+            <input type="number" id="sd-birth-month" placeholder="月" min="1" max="12">
+            <span>月</span>
+            <input type="number" id="sd-birth-day" placeholder="日" min="1" max="31">
+            <span>日</span>
+          </div>
+          <div class="age-hint" id="sd-age-hint" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">保單設定</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>繳費年期</label>
+            <select id="sd-payment-term">
+              ${termOptions}
+            </select>
+          </div>
+          <div class="field">
+            <label>繳別</label>
+            <select id="sd-payment-freq">
+              <option value="年繳">年繳</option>
+              <option value="半年繳">半年繳</option>
+              <option value="季繳">季繳</option>
+              <option value="月繳">月繳</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-note">投保年齡：${product.ageHint || ''}</div>
+        <div class="field" style="margin-top:14px;">
+          <label>保額（萬元）</label>
+          <input type="number" id="sd-face-amount" value="${product.faceAmountDefault ?? 10}" min="${product.faceAmountMin ?? 10}" step="${product.faceAmountStep ?? 1}">
+        </div>
+        <div class="field-note">${product.faceRangeHint || '保額範圍：10 ~ 500 萬（實際上限依投保年齡可能調整）'}</div>
+      </div>
+
+      <details class="advanced">
+        <summary>進階選項（繳費方式／保費折扣）</summary>
+        <div class="form-grid">
+          <div class="field">
+            <label>首期繳費方式</label>
+            <select id="sd-first-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="匯款">匯款</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>續期繳費方式</label>
+            <select id="sd-renewal-payment-method">
+              <option value="金融機構轉帳">金融機構轉帳</option>
+              <option value="一般信用卡">一般信用卡</option>
+              <option value="富邦信用卡">富邦信用卡</option>
+              <option value="自行繳費">自行繳費</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>專案保費折扣</label>
+            <select id="sd-discount">
+              <option value="無">無</option>
+              <option value="員工轉帳件">員工轉帳件</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <button class="submit-btn" id="sd-submit-btn">開始試算</button>
+      <div class="calc-error" id="sd-error"></div>
+      <div class="calc-loading" id="sd-loading">試算中，正在重新計算官方 Excel 建議書，請稍候...</div>
+
+      <div class="result-box" id="sd-result-box">
+        <div class="summary-grid" id="sd-summary-grid"></div>
+        <div class="table-wrap"><table class="result-table" id="sd-result-table"></table></div>
+        <button class="download-pdf-btn" id="sd-download-btn" style="display:none;">📄 下載 PDF 建議書</button>
+      </div>
+    `;
+  }
+
+  function initSDAgeHint() {
+    const yearEl = document.getElementById('sd-birth-year');
+    const monthEl = document.getElementById('sd-birth-month');
+    const dayEl = document.getElementById('sd-birth-day');
+    const hintEl = document.getElementById('sd-age-hint');
+    if (!yearEl || !monthEl || !dayEl || !hintEl) return;
+
+    function update() {
+      const y = yearEl.value, m = monthEl.value, d = dayEl.value;
+      if (!y || !m || !d) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      const result = calcInsuranceAndActualAge(y, m, d, new Date());
+      if (!result) {
+        hintEl.style.display = 'none';
+        return;
+      }
+      hintEl.textContent = `保險年齡 ${result.insuranceAge} 歲　實際年齡 ${result.actualAge} 歲`;
+      hintEl.style.display = 'block';
+    }
+
+    [yearEl, monthEl, dayEl].forEach(el => el.addEventListener('input', update));
+  }
+
+  const SD_TABLE_COLUMNS_BASE = [
+    { key: 'policy_year', label: '保單年度' },
+    { key: 'age', label: '保險年齡' },
+    { key: 'annual_premium', label: '年度保費' },
+    { key: 'cum_premium', label: '累計保費' },
+    { key: 'death_benefit', label: '身故/完全失能保障' },
+    { key: 'critical_illness_mental', label: '重大傷病保險金-慢性精神病' },
+    { key: 'critical_illness_other', label: '重大傷病保險金-除慢性精神病以外' },
+    { key: 'specific_critical_illness', label: '特定重大傷病保險金' },
+    { key: 'specific_disease_benefit', label: '特定重大疾病/傷病保險金' },
+  ];
+  const SD_TABLE_COLUMN_MATURITY = { key: 'maturity_benefit', label: '滿期保險金' };
+  const SD_TABLE_COLUMNS_TAIL = [
+    { key: 'cash_value', label: '年度末解約金' },
+    { key: 'reduced_paid_up', label: '減額繳清保額' },
+  ];
+
+  function getSDTableColumns(product) {
+    return product.hasMaturityBenefit
+      ? [...SD_TABLE_COLUMNS_BASE, SD_TABLE_COLUMN_MATURITY, ...SD_TABLE_COLUMNS_TAIL]
+      : [...SD_TABLE_COLUMNS_BASE, ...SD_TABLE_COLUMNS_TAIL];
+  }
+
+  async function submitSDCalc(product) {
+    const errorEl = document.getElementById('sd-error');
+    const loadingEl = document.getElementById('sd-loading');
+    const resultBox = document.getElementById('sd-result-box');
+    const btn = document.getElementById('sd-submit-btn');
+    errorEl.style.display = 'none';
+    resultBox.style.display = 'none';
+
+    const birthYear = document.getElementById('sd-birth-year').value;
+    const birthMonth = document.getElementById('sd-birth-month').value;
+    const birthDay = document.getElementById('sd-birth-day').value;
+    if (!birthYear || !birthMonth || !birthDay) {
+      errorEl.textContent = '請填寫完整的生日（民國年／月／日）';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const payload = {
+      name: document.getElementById('sd-name').value || '客戶',
+      gender: document.getElementById('sd-gender').value,
+      birth_year: Number(birthYear),
+      birth_month: Number(birthMonth),
+      birth_day: Number(birthDay),
+      payment_term: Number(document.getElementById('sd-payment-term').value),
+      payment_freq: document.getElementById('sd-payment-freq').value,
+      face_amount_wan: Number(document.getElementById('sd-face-amount').value),
+      first_payment_method: document.getElementById('sd-first-payment-method').value,
+      renewal_payment_method: document.getElementById('sd-renewal-payment-method').value,
+      discount: document.getElementById('sd-discount').value,
+      want_pdf: true,
+    };
+
+    btn.disabled = true;
+    loadingEl.style.display = 'block';
+
+    try {
+      const resp = await fetch(`${SD_API_BASE}/api/${product.apiProduct}/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || '試算失敗，請確認輸入內容');
+      }
+      renderSDResults(data, product);
+    } catch (err) {
+      errorEl.textContent = '試算失敗：' + err.message + '（若持續發生，可能是後端服務剛啟動需要暖機，請稍後再試一次）';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  }
+
+  function renderSDResults(data, product) {
+    const summaryEl = document.getElementById('sd-summary-grid');
+    const p = data.premiums || {};
+    summaryEl.innerHTML = `
+      <div class="summary-tile"><div class="label">保額（萬元）</div><div class="value">${fmtNum(p.final_face_amount_wan)}</div></div>
+      <div class="summary-tile"><div class="label">年繳保費</div><div class="value">${fmtNum(p.annual_premium_gross)}</div></div>
+      <div class="summary-tile"><div class="label">首年實繳保費</div><div class="value">${fmtNum(p.first_year_premium)}</div></div>
+      <div class="summary-tile"><div class="label">續年實繳保費</div><div class="value">${fmtNum(p.renewal_year_premium)}</div></div>
+    `;
+
+    const columns = getSDTableColumns(product);
+    const tableEl = document.getElementById('sd-result-table');
+    const rows = (data.tables && data.tables.main && data.tables.main.rows) || [];
+    const head = '<tr>' + columns.map(c => `<th>${c.label}</th>`).join('') + '</tr>';
+    const body = rows.map(row =>
+      '<tr>' + columns.map(c => `<td>${c.key === 'policy_year' || c.key === 'age' ? (row[c.key] === null || row[c.key] === undefined ? '—' : Math.round(row[c.key])) : fmtNum(row[c.key])}</td>`).join('') + '</tr>'
+    ).join('');
+    tableEl.innerHTML = head + body;
+
+    const downloadBtn = document.getElementById('sd-download-btn');
+    if (data.pdf_base64) {
+      downloadBtn.style.display = 'block';
+      downloadBtn.onclick = () => downloadPdfBlob(data.pdf_base64, '建議書.pdf');
+    } else {
+      downloadBtn.style.display = 'none';
+    }
+
+    document.getElementById('sd-result-box').style.display = 'block';
+  }
+
+  // ---------- 建立首頁模組卡片 ----------
+  const gridEl = document.getElementById('module-grid');
+  gridEl.innerHTML = MODULES.map((mod, i) => `
+    <div class="module-card" onclick="showModule(${i})">
+      <div class="module-icon">${mod.icon}</div>
+      <div class="module-info">
+        <div class="module-name">${mod.name}</div>
+        <div class="module-count">${mod.products.length} 項商品</div>
+      </div>
+      <div class="module-arrow">›</div>
+    </div>
+  `).join('');
+</script>
+
+</body>
+</html>
