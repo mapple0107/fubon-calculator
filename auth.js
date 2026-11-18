@@ -4,7 +4,7 @@
 // 目的只是避免別人誤點進來，不是用來保護機密資料。
 // 要改密碼，改下面這行就好。
 (function () {
-  const SITE_PASSWORD = "0000";
+  const SITE_PASSWORD = "0107";
   const STORAGE_KEY = "mapleSiteUnlocked";
 
   function unlockPage() {
@@ -12,6 +12,9 @@
     if (lock) lock.remove();
     const main = document.getElementById('main-content');
     if (main) main.style.display = '';
+    // 有些頁面（例如建議書系統）會在 resize 事件時重新計算版面，
+    // 解鎖、顯示內容後補發一次 resize，讓那些頁面立刻套用正確版面。
+    window.dispatchEvent(new Event('resize'));
   }
 
   function injectLockScreen() {
