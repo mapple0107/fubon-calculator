@@ -115,6 +115,9 @@
   .results.show { display: block; }
   .summary-row { font-size: 12.5px; color: #86868b; margin-top: 10px; text-align: center; }
   .note { font-size: 11px; color: #86868b; margin: -8px 0 12px; }
+  .field-hint { font-size: 12px; color: #94a3b8; }
+  .input-wrap.lg input { font-size: 20px; font-weight: 700; padding: 13px 14px; }
+  .field select.lg { font-size: 18px; font-weight: 700; padding: 13px 14px; }
   @media (max-width: 500px) { .metric-grid { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
@@ -156,34 +159,53 @@
       <h2>房貸條件設定</h2>
       <div class="grid3">
         <div class="field">
+          <label>借款人出生年月日</label>
+          <div class="input-wrap lg">
+            <input type="date" id="loanBirthdate" value="1991-01-01" onchange="updateAgeHint()">
+          </div>
+          <div class="field-hint" id="ageHint">目前年齡：35 歲</div>
+        </div>
+        <div class="field">
+          <label>借款人性別</label>
+          <select id="loanGender" class="lg">
+            <option value="男">男</option>
+            <option value="女">女</option>
+          </select>
+          <div class="field-hint">目前試算暫不使用，預留未來保單試算參考</div>
+        </div>
+        <div class="field">
           <label>借款金額</label>
-          <div class="input-wrap">
+          <div class="input-wrap lg">
             <input type="number" id="loanPrincipal" value="1000" step="10">
             <span class="unit">萬元</span>
           </div>
-        </div>
-        <div class="field">
-          <label>年利率</label>
-          <div class="input-wrap">
-            <input type="number" id="loanRate" value="2.6" step="0.05">
-            <span class="unit">%</span>
-          </div>
-        </div>
-        <div class="field">
-          <label>還款年期</label>
-          <div class="input-wrap">
-            <input type="number" id="loanYears" value="30" step="1">
-            <span class="unit">年</span>
-          </div>
+          <div class="field-hint">例：輸入 1000 代表 1,000 萬元</div>
         </div>
       </div>
       <div class="grid3" style="margin-top:14px;">
         <div class="field">
+          <label>年利率</label>
+          <div class="input-wrap lg">
+            <input type="number" id="loanRate" value="2.6" step="0.05">
+            <span class="unit">%</span>
+          </div>
+          <div class="field-hint">例：2.6</div>
+        </div>
+        <div class="field">
+          <label>還款年期</label>
+          <div class="input-wrap lg">
+            <input type="number" id="loanYears" value="30" step="1">
+            <span class="unit">年</span>
+          </div>
+          <div class="field-hint">1 ～ 40 年</div>
+        </div>
+        <div class="field">
           <label>寬限期（只繳息）</label>
-          <div class="input-wrap">
+          <div class="input-wrap lg">
             <input type="number" id="loanGrace" value="2" step="1">
             <span class="unit">年</span>
           </div>
+          <div class="field-hint">0 = 無寬限期，只繳利息</div>
         </div>
       </div>
     </div>
@@ -313,6 +335,19 @@ function switchTab(mode) {
 
 /* ---------- 房貸試算 ---------- */
 let mortgageSchedule = null;
+
+function updateAgeHint() {
+  const val = document.getElementById('loanBirthdate').value;
+  const hintEl = document.getElementById('ageHint');
+  if (!val) { hintEl.textContent = '請選擇出生年月日'; return; }
+  const birth = new Date(val);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const beforeBirthday = (today.getMonth() < birth.getMonth()) ||
+    (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+  if (beforeBirthday) age -= 1;
+  hintEl.textContent = age >= 0 ? `目前年齡：${age} 歲` : '請確認出生年月日';
+}
 
 function calcMortgage() {
   const principal = (parseFloat(document.getElementById('loanPrincipal').value) || 0) * 10000;
@@ -479,6 +514,7 @@ function renderSummary() {
 
 buildFundOptions();
 fetchFundLiveRate();
+updateAgeHint();
 </script>
 </body>
 </html>
