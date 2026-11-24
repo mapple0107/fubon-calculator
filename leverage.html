@@ -932,6 +932,7 @@ function renderPolicyTable() {
   document.getElementById('policy-thead').innerHTML = `<tr>
     <th>保單年度</th><th>保險年齡</th>
     <th>累計實繳保費<br><small>${unit}</small></th>
+    <th>身故保障<br><small>${unit}</small></th>
     <th>年度末解約金額<br><small>${unit}</small></th>
     <th>解約獲利<br><small>${unit}</small></th>
   </tr>`;
@@ -940,12 +941,14 @@ function renderPolicyTable() {
   tbody.innerHTML = '';
   policyTableRows.forEach(row => {
     const cash = row.total_cash_value ?? row.cash_value;
+    const death = row.total_death_benefit ?? row.death_benefit;
     const cum = row.cum_premium;
     const gain = (cash !== null && cash !== undefined && cum) ? cash - cum : null;
     tbody.innerHTML += `<tr>
       <td>第 ${Math.round(row.policy_year)} 年</td>
       <td>${row.age !== null && row.age !== undefined ? Math.round(row.age) + ' 歲' : '—'}</td>
       <td>${money(cum)}</td>
+      <td>${death !== null && death !== undefined ? money(death) : '—'}</td>
       <td>${cash !== null && cash !== undefined ? money(cash) : '—'}</td>
       <td style="color:${gain !== null && gain > 0 ? '#1a8a3c' : '#86868b'}">${gain !== null && gain > 0 ? '+' + money(gain) : '—'}</td>
     </tr>`;
