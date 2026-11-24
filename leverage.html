@@ -752,7 +752,7 @@ function renderSummary() {
     tbody.innerHTML += `<tr class="${isExceedRow ? 'exceed-row' : ''}">
       <td>第 ${r.row.year} 年 ${tags}</td>
       <td>${r.age !== null ? r.age + ' 歲' : '—'}</td>
-      <td style="color:#d0392b">-${fmt(r.row.endBal)}</td>
+      <td style="color:#d0392b">${r.row.endBal > 0 ? '-' + fmt(r.row.endBal) : fmt(r.row.endBal)}</td>
       <td style="color:#1a8a3c">${r.cashTwd !== null ? '+' + fmt(r.cashTwd) : '—'}</td>
       <td>${fundCell}</td>
       <td style="color:${r.gap>=0?'#1a8a3c':'#d0392b'}">${r.gap>=0?'+':''}${fmt(r.gap)}</td>
