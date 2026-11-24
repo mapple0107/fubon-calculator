@@ -4,7 +4,7 @@
 // 目的只是避免別人誤點進來，不是用來保護機密資料。
 // 要改密碼，改下面這行就好。
 (function () {
-  const SITE_PASSWORD = "0107";
+  const SITE_PASSWORD = "0988";
   const STORAGE_KEY = "mapleSiteUnlocked";
 
   function unlockPage() {
