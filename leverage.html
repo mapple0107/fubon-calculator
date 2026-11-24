@@ -684,7 +684,7 @@ function renderSummary() {
 
   const includeFundEl = document.getElementById('summaryIncludeFund');
   const includeFund = includeFundEl.checked;
-  const fundInvestTwd = (includeFund && fundResult) ? fundResult.invest : 0;
+  const fundInvestTwd = (includeFund && fundResult) ? fundResult.eff : 0;
   const rate = policyTableRate;
   const birthVal = document.getElementById('loanBirthdate').value;
   const baseAge = computeAgeFromBirthdate(birthVal);
@@ -710,7 +710,7 @@ function renderSummary() {
   if (!fundResult) {
     fundCell = '<span style="color:#86868b">—</span>';
   } else {
-    const amt = '+' + fmt(fundResult.invest);
+    const amt = '+' + fmt(fundResult.eff);
     fundCell = includeFund
       ? `<span style="color:#1a8a3c">${amt}</span>`
       : `<span style="color:#d0392b; text-decoration:line-through;">${amt}</span>`;
