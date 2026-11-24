@@ -119,6 +119,19 @@
   .input-wrap.lg input { font-size: 20px; font-weight: 700; padding: 13px 14px; }
   .field select.lg { font-size: 18px; font-weight: 700; padding: 13px 14px; }
   @media (max-width: 500px) { .metric-grid { grid-template-columns: 1fr 1fr; } }
+  .metric-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.1rem; }
+  @media (max-width: 900px) { .metric-grid-5 { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 500px) { .metric-grid-5 { grid-template-columns: repeat(2, 1fr); } }
+  .cashflow-note {
+    font-size: 12.5px; color: #475569; background: #eef6ff; border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 14px; line-height: 1.6;
+  }
+  .row-tag {
+    display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; margin-right: 4px; white-space: nowrap;
+  }
+  .row-tag.grace { background: #fff3e0; color: #c77700; }
+  .row-tag.covered { background: #e3fcef; color: #0a8a4c; }
 </style>
 </head>
 <body>
@@ -281,8 +294,17 @@
 
     <div class="results card" id="fund-results" style="margin-top:1.25rem;">
       <h2>配息試算結果</h2>
-      <div class="metric-grid" id="fund-metrics"></div>
-      <div class="summary-row" id="fund-summary"></div>
+      <div class="hint" id="fund-cashflow-hint">請先完成上方「房貸試算」分頁的試算，這裡才會一併顯示房貸現金流分析。</div>
+      <div id="fund-cashflow-content" style="display:none;">
+        <div class="metric-grid-5" id="fund-metrics"></div>
+        <div class="cashflow-note" id="fund-summary"></div>
+        <div style="max-height:420px; overflow-y:auto;">
+        <table>
+          <thead><tr><th>年度</th><th>借款人年齡</th><th>房貸月還款</th><th>月配息</th><th>月現金流</th><th>年現金流</th></tr></thead>
+          <tbody id="fund-cashflow-table"></tbody>
+        </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -335,18 +357,27 @@ function switchTab(mode) {
 
 /* ---------- 房貸試算 ---------- */
 let mortgageSchedule = null;
+let mortgageGraceMonthly = 0;   // 寬限期月付（只繳息），供「配息基金」分頁計算現金流共用
+let mortgageAmortMonthly = 0;   // 攤還期月付（本息），供「配息基金」分頁計算現金流共用
+let mortgageGraceYears = 0;     // 寬限期年數，供「配息基金」分頁判斷寬限標籤共用
 
-function updateAgeHint() {
-  const val = document.getElementById('loanBirthdate').value;
-  const hintEl = document.getElementById('ageHint');
-  if (!val) { hintEl.textContent = '請選擇出生年月日'; return; }
+function computeAgeFromBirthdate(val) {
+  if (!val) return null;
   const birth = new Date(val);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const beforeBirthday = (today.getMonth() < birth.getMonth()) ||
     (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
   if (beforeBirthday) age -= 1;
-  hintEl.textContent = age >= 0 ? `目前年齡：${age} 歲` : '請確認出生年月日';
+  return age >= 0 ? age : null;
+}
+
+function updateAgeHint() {
+  const val = document.getElementById('loanBirthdate').value;
+  const hintEl = document.getElementById('ageHint');
+  if (!val) { hintEl.textContent = '請選擇出生年月日'; return; }
+  const age = computeAgeFromBirthdate(val);
+  hintEl.textContent = age !== null ? `目前年齡：${age} 歲` : '請確認出生年月日';
 }
 
 function calcMortgage() {
@@ -381,6 +412,9 @@ function calcMortgage() {
     schedule.push({ year: y, startBal, yearInterest, yearPrincipal, endBal: Math.max(balance, 0) });
   }
   mortgageSchedule = schedule;
+  mortgageGraceMonthly = principal * r;
+  mortgageAmortMonthly = monthlyPaymentAmort;
+  mortgageGraceYears = grace;
 
   const tbody = document.getElementById('mortgage-table');
   tbody.innerHTML = '';
@@ -397,6 +431,9 @@ function calcMortgage() {
 
   document.getElementById('mortgage-results').classList.add('show');
   document.getElementById('mortgage-results').scrollIntoView({behavior:'smooth'});
+
+  // 若「配息基金」分頁已經試算過，重新計算房貸後同步更新那邊的現金流分析
+  if (typeof renderFundCashflow === 'function') renderFundCashflow();
 }
 
 /* ---------- 配息基金 ---------- */
@@ -462,21 +499,73 @@ function calcFund() {
   const yearlyTwd = monthlyTwd * 12;
   const yieldPct = eff > 0 ? (yearlyTwd / eff * 100) : 0;
 
-  fundResult = { invest, eff, monthlyUsd, monthlyTwd, yearlyTwd, yieldPct };
+  fundResult = { invest, eff, units, monthlyUsd, monthlyTwd, yearlyTwd, yieldPct };
 
   document.getElementById('fund-fee-info').textContent =
     `實際投入 TWD ${fmt(eff)}（投入 ${wan} 萬元，扣除手續費 TWD ${fmt(invest*feeRate)}）`;
 
-  document.getElementById('fund-metrics').innerHTML = `
-    <div class="metric"><div class="m-label">💵 每月配息</div><div class="m-val">TWD ${fmt(monthlyTwd)}</div></div>
-    <div class="metric"><div class="m-label">📅 每年配息</div><div class="m-val">TWD ${fmt(yearlyTwd)}</div></div>
-    <div class="metric"><div class="m-label">📈 年化配息率</div><div class="m-val">${yieldPct.toFixed(2)}%</div></div>
-  `;
-  document.getElementById('fund-summary').textContent =
-    `USD ${fmt(monthlyUsd,2)} / 月（約合 TWD ${fmt(monthlyTwd)}），單位數 ${fmt(units,2)}`;
+  renderFundCashflow();
 
   document.getElementById('fund-results').classList.add('show');
   document.getElementById('fund-results').scrollIntoView({behavior:'smooth'});
+}
+
+// 配息試算結果：結合「房貸試算」分頁的月付金額，顯示實際入帳／可得單位數／月配息，
+// 以及寬限期／寬限後的月現金流，並列出逐年現金流表格。
+function renderFundCashflow() {
+  const hintEl = document.getElementById('fund-cashflow-hint');
+  const contentEl = document.getElementById('fund-cashflow-content');
+  if (!fundResult) return;
+  if (!mortgageSchedule) {
+    hintEl.classList.add('show');
+    contentEl.style.display = 'none';
+    return;
+  }
+  hintEl.classList.remove('show');
+  contentEl.style.display = 'block';
+
+  const monthlyTwd = fundResult.monthlyTwd;
+  const graceMonthly = mortgageGraceMonthly;
+  const amortMonthly = mortgageAmortMonthly;
+  const cashflowGrace = monthlyTwd - graceMonthly;
+  const cashflowAmort = monthlyTwd - amortMonthly;
+  const navVal = parseFloat(document.getElementById('fundNav').value) || 0;
+  const fxVal = parseFloat(document.getElementById('fundFxRate').value) || 0;
+  const distVal = parseFloat(document.getElementById('fundDist').value) || 0;
+
+  document.getElementById('fund-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">💵 實際入帳</div><div class="m-val">${fmt(fundResult.eff)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">元（手續費已扣）</div></div>
+    <div class="metric"><div class="m-label">📦 可得單位數</div><div class="m-val">${fmt(fundResult.units,2)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">淨值 ${navVal}．匯率 ${fxVal}</div></div>
+    <div class="metric"><div class="m-label">💰 月配息</div><div class="m-val">${fmt(monthlyTwd)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">元/月</div></div>
+    <div class="metric"><div class="m-label">🏦 寬限期月現金流</div><div class="m-val" style="color:${cashflowGrace>=0?'#1a8a3c':'#d0392b'};">${cashflowGrace>=0?'+':''}${fmt(cashflowGrace)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－月息 ${fmt(graceMonthly)}</div></div>
+    <div class="metric"><div class="m-label">📅 寬限後月現金流</div><div class="m-val" style="color:${cashflowAmort>=0?'#1a8a3c':'#d0392b'};">${cashflowAmort>=0?'+':''}${fmt(cashflowAmort)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－月付 ${fmt(amortMonthly)}</div></div>
+  `;
+
+  document.getElementById('fund-summary').textContent =
+    `配息以每單位 ${distVal} USD/月、匯率 1 USD = ${fxVal} TWD 估算；現金流 = 月配息－房貸月還款。配息非保證，實際依市場波動，僅供規劃參考。`;
+
+  const birthVal = document.getElementById('loanBirthdate').value;
+  const baseAge = computeAgeFromBirthdate(birthVal);
+
+  const tbody = document.getElementById('fund-cashflow-table');
+  tbody.innerHTML = '';
+  mortgageSchedule.forEach(row => {
+    const isGrace = row.year <= mortgageGraceYears;
+    const payment = isGrace ? graceMonthly : amortMonthly;
+    const cashflow = monthlyTwd - payment;
+    const yearCashflow = cashflow * 12;
+    const age = baseAge !== null ? baseAge + (row.year - 1) : null;
+    const tags = (isGrace ? '<span class="row-tag grace">寬限</span>' : '') +
+      (cashflow >= 0 ? '<span class="row-tag covered">配息覆蓋</span>' : '');
+    tbody.innerHTML += `<tr>
+      <td>第 ${row.year} 年 ${tags}</td>
+      <td>${age !== null ? age + ' 歲' : '—'}</td>
+      <td style="color:#d0392b">-${fmt(payment)}</td>
+      <td>${fmt(monthlyTwd)}</td>
+      <td style="color:${cashflow>=0?'#1a8a3c':'#d0392b'}">${cashflow>=0?'+':''}${fmt(cashflow)}</td>
+      <td style="color:${yearCashflow>=0?'#1a8a3c':'#d0392b'}">${yearCashflow>=0?'+':''}${fmt(yearCashflow)}</td>
+    </tr>`;
+  });
 }
 
 /* ---------- 資產負債總覽 ---------- */
