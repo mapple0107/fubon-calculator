@@ -163,6 +163,7 @@
   <div class="mode-tabs">
     <button class="mode-tab active" id="tab-mortgage" onclick="switchTab('mortgage')">🏦 房貸試算</button>
     <button class="mode-tab" id="tab-fund" onclick="switchTab('fund')">💰 配息基金</button>
+    <button class="mode-tab" id="tab-policy" onclick="switchTab('policy')">📋 保單試算</button>
     <button class="mode-tab" id="tab-summary" onclick="switchTab('summary')">📊 資產負債總覽</button>
   </div>
 
@@ -308,6 +309,84 @@
     </div>
   </div>
 
+  <!-- 保單試算 -->
+  <div id="section-policy" class="section">
+    <div class="card">
+      <h2>保單試算設定</h2>
+      <div class="note">本頁串接「建議書系統」官方 Excel 試算引擎（與正式建議書同一套邏輯），結果為正式保單數字，非簡化估算。出生年月日／性別沿用「房貸試算」分頁設定，美元匯率沿用「配息基金」分頁數值。</div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>選擇保單商品</label>
+        <select id="policySelect" onchange="onPolicySelectChange()"></select>
+        <div class="field-hint" id="policyProductHint"></div>
+      </div>
+      <div class="grid3" id="policyTermFreqRow">
+        <div class="field" id="policyTermField" style="display:none;">
+          <label>主約繳費年期</label>
+          <select id="policyTerm" onchange="onPolicySelectChange()"></select>
+        </div>
+        <div class="field" id="policyFreqField">
+          <label>繳別</label>
+          <select id="policyFreq" onchange="onPolicySelectChange()"></select>
+        </div>
+        <div class="field" id="policyScenarioField" style="display:none;">
+          <label>建議書標示紅利等級</label>
+          <select id="policyScenario">
+            <option value="中分紅">中分紅（最可能紅利）</option>
+            <option value="高分紅">高分紅</option>
+            <option value="低分紅">低分紅（較低紅利）</option>
+          </select>
+        </div>
+        <div class="field" id="policyBonusField" style="display:none;">
+          <label>增值回饋分享金給付方式</label>
+          <select id="policyBonus">
+            <option value="購買增額繳清保險金額">購買增額繳清保險金額</option>
+            <option value="儲存生息">儲存生息</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin:14px 0;">
+        <label>試算依據</label>
+        <select id="policyInputMode" onchange="onPolicyInputModeChange()">
+          <option value="annual_twd">年繳保費（萬元・台幣）</option>
+          <option value="face_amount">保額（萬元・美元）</option>
+        </select>
+      </div>
+      <div class="grid3">
+        <div class="field" id="policyAnnualTwdField">
+          <div class="input-wrap">
+            <input type="number" id="policyAnnualTwd" value="30" step="1">
+            <span class="unit">萬元台幣</span>
+          </div>
+          <div class="field-hint">折扣後實繳年繳保費（台幣）</div>
+        </div>
+        <div class="field" id="policyFaceField" style="display:none;">
+          <div class="input-wrap">
+            <input type="number" id="policyFaceAmount" value="20" step="1">
+            <span class="unit">萬美元</span>
+          </div>
+          <div class="field-hint">保額（美元）</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="calc-btn" onclick="calcPolicy()">試算保單</button>
+    <div class="warn" id="policy-error" style="display:none;"></div>
+    <div class="hint show" id="policy-loading" style="display:none;">試算中，正在重新計算官方 Excel 建議書，請稍候（約 10～20 秒）...</div>
+
+    <div class="results card" id="policy-results" style="margin-top:1.25rem;">
+      <h2>保單試算結果</h2>
+      <div class="metric-grid" id="policy-metrics"></div>
+      <div class="cashflow-note" id="policy-summary"></div>
+      <div style="max-height:420px; overflow-y:auto;">
+      <table>
+        <thead><tr><th>保單年度</th><th>保險年齡</th><th>累計實繳保費</th><th>年度末解約金額</th><th>解約獲利</th></tr></thead>
+        <tbody id="policy-table"></tbody>
+      </table>
+      </div>
+      <button class="calc-btn" id="policy-download-btn" style="display:none; background:linear-gradient(135deg,#7c3aed,#9333ea); margin-top:14px;">📄 下載 PDF 建議書</button>
+    </div>
+  </div>
+
   <!-- 資產負債總覽 -->
   <div id="section-summary" class="section">
     <div class="card">
@@ -345,10 +424,13 @@ const FUND_OPTIONS = [
   { name:"MLE24", label:"MLE24｜貝萊德世界科技基金", nav:16.48, dist:0.162 },
 ];
 
-function fmt(n, dec=0) { return Math.round(n).toLocaleString('zh-TW',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function fmt(n, dec=0) {
+  const factor = Math.pow(10, dec);
+  return (Math.round(n * factor) / factor).toLocaleString('zh-TW', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+}
 
 function switchTab(mode) {
-  ['mortgage','fund','summary'].forEach(m => {
+  ['mortgage','fund','policy','summary'].forEach(m => {
     document.getElementById('tab-'+m).classList.toggle('active', m===mode);
     document.getElementById('section-'+m).classList.toggle('active', m===mode);
   });
@@ -601,9 +683,235 @@ function renderSummary() {
   `;
 }
 
+/* ---------- 保單試算（串接建議書系統官方後端） ---------- */
+const POLICY_API_BASE = "https://proposal-calculator-backend-production.up.railway.app";
+// 與「建議書系統」proposal.html 的 MODULES 相同資料（僅取保額型分紅／利變型保單兩類、狀態為 ready 者）。
+// 若建議書系統新增/調整這兩類商品，請同步更新這裡。
+const POLICY_OPTIONS = [
+  { code:"PFK1", apiProduct:"PFK1", calcType:"PFA", fullName:"智富紅運外幣分紅終身壽險", paymentTerm:1, freqOptions:["躉繳"], faceDefault:15 },
+  { code:"FPE1", apiProduct:"FPE1", calcType:"PFA", fullName:"鴻運穩傳外幣分紅終身壽險", paymentTerm:1, freqOptions:["躉繳"], hasScenario:false, faceDefault:30 },
+  { code:"PFK2", apiProduct:"PFK2", calcType:"PFA", fullName:"智富紅運外幣分紅終身壽險", paymentTerm:2, faceDefault:15 },
+  { code:"FPE2", apiProduct:"FPE2", calcType:"PFA", fullName:"鴻運穩傳外幣分紅終身壽險", paymentTerm:2, hasScenario:false, faceDefault:30 },
+  { code:"PFA3", apiProduct:"PFA3", calcType:"PFA", fullName:"美富紅運外幣分紅終身壽險", paymentTerm:3, faceDefault:20 },
+  { code:"FPG",  apiProduct:"FPG",  calcType:"PFA", fullName:"紅運心傳外幣分紅終身壽險", termOptions:[3,5], paymentTerm:3, hasScenario:false, faceDefault:10 },
+  { code:"PFA6", apiProduct:"PFA6", calcType:"PFA", fullName:"美富紅運外幣分紅終身壽險", paymentTerm:6, faceDefault:20 },
+  { code:"PFJ6", apiProduct:"PFJ6", calcType:"PFA", fullName:"美富紅盈外幣分紅終身壽險", paymentTerm:6, hasScenario:false, faceDefault:10 },
+  { code:"PFD",  apiProduct:"PFD",  calcType:"PFA", fullName:"紅富美好外幣分紅終身壽險", termOptions:[10,20], paymentTerm:10, faceDefault:10 },
+  { code:"FBV",  apiProduct:"FBV",  calcType:"PFA", tableType:"UL", fullName:"美裕富足外幣利率變動型終身壽險", freqOptions:["躉繳"], paymentTerm:1, hasScenario:false, faceDefault:5 },
+  { code:"FBX",  apiProduct:"FBX",  calcType:"PFA", tableType:"UL", fullName:"美盈鴻旺外幣利率變動型終身壽險", freqOptions:["躉繳","年繳","半年繳","季繳","月繳"], mixedSingle:true, paymentTerm:2, hasScenario:false, faceDefault:20 },
+  { code:"FBO",  apiProduct:"FBO",  calcType:"PFA", tableType:"UL", fullName:"美利大運外幣利率變動型終身壽險", termOptions:[2,6,8], paymentTerm:2, hasScenario:false, faceDefault:10 },
+  { code:"FBM",  apiProduct:"FBM",  calcType:"PFA", tableType:"UL", fullName:"順順美利外幣利率變動型終身壽險", termOptions:[6,10,20], paymentTerm:6, hasScenario:false, faceDefault:30 },
+];
+
+function buildPolicyOptions() {
+  const sel = document.getElementById('policySelect');
+  POLICY_OPTIONS.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${p.code}｜${p.fullName}`;
+    sel.appendChild(opt);
+  });
+  onPolicySelectChange();
+}
+
+function policyIsSingle(product) {
+  if (product.mixedSingle) {
+    const el = document.getElementById('policyFreq');
+    return el ? el.value === '躉繳' : true;
+  }
+  return (product.freqOptions || []).length === 1 && product.freqOptions[0] === '躉繳';
+}
+
+function policyTerm(product) {
+  if (product.termOptions) {
+    const el = document.getElementById('policyTerm');
+    return el ? Number(el.value) : product.termOptions[0];
+  }
+  if (product.mixedSingle) return policyIsSingle(product) ? 1 : product.paymentTerm;
+  return product.paymentTerm;
+}
+
+function onPolicySelectChange() {
+  const idx = document.getElementById('policySelect').value;
+  const product = POLICY_OPTIONS[parseInt(idx)];
+  if (!product) return;
+
+  const termField = document.getElementById('policyTermField');
+  const termSel = document.getElementById('policyTerm');
+  if (product.termOptions) {
+    termSel.innerHTML = product.termOptions.map(t => `<option value="${t}">${t} 年期</option>`).join('');
+    termField.style.display = '';
+  } else {
+    termField.style.display = 'none';
+  }
+
+  const freqSel = document.getElementById('policyFreq');
+  const freqOpts = product.freqOptions || ['年繳', '半年繳', '季繳', '月繳'];
+  freqSel.innerHTML = freqOpts.map(f => `<option value="${f}">${f}</option>`).join('');
+  freqSel.disabled = freqOpts.length === 1;
+
+  document.getElementById('policyScenarioField').style.display = product.hasScenario === false ? 'none' : '';
+  document.getElementById('policyBonusField').style.display = product.tableType === 'UL' ? '' : 'none';
+  document.getElementById('policyFaceAmount').value = product.faceDefault ?? 20;
+
+  document.getElementById('policyProductHint').textContent =
+    `富邦人壽${product.fullName}（美元保單）・${policyIsSingle(product) ? '躉繳' : (product.termOptions ? termSel.value : product.paymentTerm) + ' 年期'}`;
+}
+
+function onPolicyInputModeChange() {
+  const mode = document.getElementById('policyInputMode').value;
+  document.getElementById('policyAnnualTwdField').style.display = mode === 'annual_twd' ? '' : 'none';
+  document.getElementById('policyFaceField').style.display = mode === 'face_amount' ? '' : 'none';
+}
+
+function policyScenarioKeys(tables) {
+  return ['most_likely', 'lower', 'zero_possible', 'declared'].filter(k => tables && tables[k]);
+}
+
+function downloadPolicyPdf(base64) {
+  const byteChars = atob(base64);
+  const byteNumbers = new Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '建議書.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+async function calcPolicy() {
+  const errorEl = document.getElementById('policy-error');
+  const loadingEl = document.getElementById('policy-loading');
+  const resultsEl = document.getElementById('policy-results');
+  errorEl.style.display = 'none';
+  resultsEl.classList.remove('show');
+
+  const idx = document.getElementById('policySelect').value;
+  const product = POLICY_OPTIONS[parseInt(idx)];
+  if (!product) return;
+
+  const birthVal = document.getElementById('loanBirthdate').value;
+  if (!birthVal) {
+    errorEl.textContent = '請先到「房貸試算」分頁填寫借款人出生年月日';
+    errorEl.style.display = 'block';
+    return;
+  }
+  const birth = new Date(birthVal);
+  const gender = document.getElementById('loanGender').value;
+  const inputMode = document.getElementById('policyInputMode').value;
+  const rate = parseFloat(document.getElementById('fundFxRate').value) || 0;
+
+  const payload = {
+    name: '客戶',
+    gender: gender,
+    birth_year: birth.getFullYear() - 1911,
+    birth_month: birth.getMonth() + 1,
+    birth_day: birth.getDate(),
+    payment_term: policyTerm(product),
+    retire_age: null,
+    payment_freq: document.getElementById('policyFreq').value,
+    dividend_scenario: product.hasScenario === false ? undefined : document.getElementById('policyScenario').value,
+    bonus_method: product.tableType === 'UL' ? document.getElementById('policyBonus').value : undefined,
+    input_mode: inputMode,
+    relationship: '同被保險人',
+    discount: '無',
+    death_benefit_pct: 0,
+    installment_period: 20,
+    want_pdf: true,
+  };
+
+  if (inputMode === 'face_amount') {
+    payload.face_amount_wan = parseFloat(document.getElementById('policyFaceAmount').value) || 0;
+  } else {
+    if (!(rate > 0)) {
+      errorEl.textContent = '請先到「配息基金」分頁確認美元匯率已正確帶入';
+      errorEl.style.display = 'block';
+      return;
+    }
+    const annualTwdWan = parseFloat(document.getElementById('policyAnnualTwd').value) || 0;
+    const annualUsd = Math.round(annualTwdWan * 10000 / rate);
+    if (!(annualUsd > 0)) {
+      errorEl.textContent = '請輸入年繳保費金額';
+      errorEl.style.display = 'block';
+      return;
+    }
+    payload.input_mode = 'premium';
+    payload.premium_amount = annualUsd;
+    payload.premium_net = true;
+  }
+
+  loadingEl.style.display = 'block';
+  try {
+    const resp = await fetch(`${POLICY_API_BASE}/api/${product.apiProduct}/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || '試算失敗，請確認輸入內容');
+    renderPolicyResults(data, product, rate);
+  } catch (err) {
+    errorEl.textContent = '試算失敗：' + err.message + '（若持續發生，可能是後端服務剛啟動需要暖機，請稍後再試一次）';
+    errorEl.style.display = 'block';
+  } finally {
+    loadingEl.style.display = 'none';
+  }
+}
+
+function renderPolicyResults(data, product, rate) {
+  const p = data.premiums || {};
+  const term = p.payment_term || policyTerm(product);
+  const isSingle = p.payment_freq === '躉繳';
+  const totalUsd = isSingle ? p.first_year_premium : p.first_year_premium + p.renewal_year_premium * (term - 1);
+  const twd = v => rate > 0 ? `≈ TWD ${fmt(v * rate)}` : '';
+
+  document.getElementById('policy-metrics').innerHTML = `
+    <div class="metric"><div class="m-label">💰 保額</div><div class="m-val">${fmt(p.final_face_amount_wan, 1)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">萬美元</div></div>
+    <div class="metric"><div class="m-label">💵 首年實繳保費</div><div class="m-val">US$ ${fmt(p.first_year_premium)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">${twd(p.first_year_premium)}</div></div>
+    <div class="metric"><div class="m-label">📅 ${isSingle ? '躉繳總額' : term + ' 年總繳保費'}</div><div class="m-val">US$ ${fmt(totalUsd)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">${twd(totalUsd)}</div></div>
+  `;
+
+  const key = policyScenarioKeys(data.tables)[0];
+  const rows = (data.tables[key] || {}).rows || [];
+  document.getElementById('policy-summary').textContent =
+    `以「${(data.tables[key] || {}).label || key}」情境試算；解約金額／解約獲利為年度末數字。保單為正式商品數字，惟紅利／宣告利率非保證，實際依富邦人壽公告為準。`;
+
+  const tbody = document.getElementById('policy-table');
+  tbody.innerHTML = '';
+  rows.forEach(row => {
+    const cash = row.total_cash_value ?? row.cash_value;
+    const cum = row.cum_premium;
+    const gain = (cash !== null && cash !== undefined && cum) ? cash - cum : null;
+    tbody.innerHTML += `<tr>
+      <td>第 ${Math.round(row.policy_year)} 年</td>
+      <td>${row.age !== null && row.age !== undefined ? Math.round(row.age) + ' 歲' : '—'}</td>
+      <td>${fmt(cum)}</td>
+      <td>${cash !== null && cash !== undefined ? fmt(cash) : '—'}</td>
+      <td style="color:${gain !== null && gain > 0 ? '#1a8a3c' : '#86868b'}">${gain !== null && gain > 0 ? '+' + fmt(gain) : '—'}</td>
+    </tr>`;
+  });
+
+  const downloadBtn = document.getElementById('policy-download-btn');
+  if (data.pdf_base64) {
+    downloadBtn.style.display = 'block';
+    downloadBtn.onclick = () => downloadPolicyPdf(data.pdf_base64);
+  } else {
+    downloadBtn.style.display = 'none';
+  }
+
+  document.getElementById('policy-results').classList.add('show');
+  document.getElementById('policy-results').scrollIntoView({behavior:'smooth'});
+}
+
 buildFundOptions();
 fetchFundLiveRate();
 updateAgeHint();
+buildPolicyOptions();
 </script>
 </body>
 </html>
