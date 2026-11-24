@@ -403,11 +403,10 @@
   <div id="section-summary" class="section">
     <div class="card">
       <h2>資產負債比</h2>
-      <div class="note">整合「房貸試算」的房貸餘額、「保單試算」的保單現金價值與身故保額，並可選擇是否加計「配息基金」的累計投入金額，觀察隨時間推移，資產端是否足以覆蓋房貸餘額。本表數字均為簡化假設，僅供概念參考。</div>
+      <div class="note">整合「房貸試算」的房貸餘額與「保單試算」的保單現金價值、身故保額，觀察隨時間推移，保單現金價值是否足以覆蓋剩餘房貸餘額（配息基金另列參考，因配息已用於繳納房貸，不重複計入此差額）。本表數字均為簡化假設，僅供概念參考。</div>
       <div class="hint" id="summary-hint">請先完成「房貸試算」與「保單試算」兩個分頁的試算，這裡才會顯示結果。</div>
       <div id="summary-content" style="display:none;">
         <div class="cashflow-note" id="summary-fx-note"></div>
-        <label class="check-row"><input type="checkbox" id="summaryIncludeFund" checked onchange="renderSummary()"> 貸款與現價差額計入配息基金</label>
         <div class="metric-grid-4" id="summary-metrics"></div>
         <div style="max-height:420px; overflow-y:auto;">
         <table>
@@ -682,9 +681,6 @@ function renderSummary() {
   hint.classList.remove('show');
   content.style.display = 'block';
 
-  const includeFundEl = document.getElementById('summaryIncludeFund');
-  const includeFund = includeFundEl.checked;
-  const fundInvestTwd = (includeFund && fundResult) ? fundResult.eff : 0;
   const rate = policyTableRate;
   const birthVal = document.getElementById('loanBirthdate').value;
   const baseAge = computeAgeFromBirthdate(birthVal);
@@ -700,21 +696,15 @@ function renderSummary() {
     const deathUsd = pRow ? (pRow.total_death_benefit ?? pRow.death_benefit) : null;
     const cashTwd = (cashUsd !== null && cashUsd !== undefined) ? cashUsd * rate : null;
     const deathTwd = (deathUsd !== null && deathUsd !== undefined) ? deathUsd * rate : null;
-    const gap = (cashTwd !== null ? cashTwd : 0) + fundInvestTwd - row.endBal;
+    const gap = (cashTwd !== null ? cashTwd : 0) - row.endBal;
     const age = baseAge !== null ? baseAge + (row.year - 1) : null;
     if (exceedYear === null && gap >= 0) exceedYear = row.year;
     return { row, age, cashTwd, deathTwd, gap };
   });
 
-  let fundCell;
-  if (!fundResult) {
-    fundCell = '<span style="color:#86868b">—</span>';
-  } else {
-    const amt = '+' + fmt(fundResult.eff);
-    fundCell = includeFund
-      ? `<span style="color:#1a8a3c">${amt}</span>`
-      : `<span style="color:#d0392b; text-decoration:line-through;">${amt}</span>`;
-  }
+  const fundCell = fundResult
+    ? `<span style="color:#1a8a3c">+${fmt(fundResult.eff)}</span>`
+    : '<span style="color:#86868b">—</span>';
 
   const tbody = document.getElementById('summary-table');
   tbody.innerHTML = '';
@@ -747,7 +737,7 @@ function renderSummary() {
 
   document.getElementById('summary-metrics').innerHTML = `
     <div class="metric"><div class="m-label">🏦 房貸清償年</div><div class="m-val" style="font-size:18px;">${payoffLabel}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">借款人 ${lastAge !== null ? lastAge + ' 歲' : '—'}</div></div>
-    <div class="metric"><div class="m-label">💎 ${includeFund ? '保單+基金超越房貸' : '現金價值超越房貸'}</div><div class="m-val" style="font-size:18px;">${exceedLabel}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">${exceedSub || '&nbsp;'}</div></div>
+    <div class="metric"><div class="m-label">💎 現金價值超越房貸</div><div class="m-val" style="font-size:18px;">${exceedLabel}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">${exceedSub || '&nbsp;'}</div></div>
     <div class="metric"><div class="m-label">📈 保單回本年</div><div class="m-val" style="font-size:18px;">${policyBreakEvenLabel}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">解約金≥累計保費</div></div>
     <div class="metric"><div class="m-label">💱 假設匯率</div><div class="m-val" style="font-size:18px;">1 USD=${fmt(rate,2)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">TWD（估算基準）</div></div>
   `;
