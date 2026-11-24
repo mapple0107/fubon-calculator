@@ -186,7 +186,7 @@
           <div class="input-wrap lg">
             <input type="date" id="loanBirthdate" value="1991-01-01" onchange="updateAgeHint()">
           </div>
-          <div class="field-hint" id="ageHint">目前年齡：35 歲</div>
+          <div class="field-hint" id="ageHint">目前年齡：35 歲｜保險年齡：35 歲（保單試算採用）</div>
         </div>
         <div class="field">
           <label>借款人性別</label>
@@ -467,12 +467,34 @@ function computeAgeFromBirthdate(val) {
   return age >= 0 ? age : null;
 }
 
+// 保險業通用的「保險年齡」：以足歲為基礎，若已超過上一個生日滿半年（183 天），則保險年齡 +1。
+// 「保單試算」送給建議書系統後端的是完整出生年月日，由後端官方試算引擎依此規則計算，
+// 這裡只是在畫面上同步算一次、顯示給使用者參考，並未更動實際送出的計算邏輯。
+function computePolicyAgeFromBirthdate(val) {
+  if (!val) return null;
+  const birth = new Date(val);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  const age = computeAgeFromBirthdate(val);
+  if (age === null) return null;
+
+  let lastBirthday = new Date(today.getFullYear(), birth.getMonth(), birth.getDate());
+  if (lastBirthday > today) {
+    lastBirthday = new Date(today.getFullYear() - 1, birth.getMonth(), birth.getDate());
+  }
+  const daysSince = Math.floor((today - lastBirthday) / 86400000);
+  return daysSince >= 183 ? age + 1 : age;
+}
+
 function updateAgeHint() {
   const val = document.getElementById('loanBirthdate').value;
   const hintEl = document.getElementById('ageHint');
   if (!val) { hintEl.textContent = '請選擇出生年月日'; return; }
   const age = computeAgeFromBirthdate(val);
-  hintEl.textContent = age !== null ? `目前年齡：${age} 歲` : '請確認出生年月日';
+  const policyAge = computePolicyAgeFromBirthdate(val);
+  hintEl.textContent = (age !== null && policyAge !== null)
+    ? `目前年齡：${age} 歲｜保險年齡：${policyAge} 歲（保單試算採用）`
+    : '請確認出生年月日';
 }
 
 function calcMortgage() {
