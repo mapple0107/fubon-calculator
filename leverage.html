@@ -833,10 +833,15 @@ const POLICY_API_BASE = "https://proposal-calculator-backend-production.up.railw
 // 若建議書系統新增/調整這兩類商品，請同步更新這裡。
 const POLICY_OPTIONS = [
   { code:"FPE1", apiProduct:"FPE1", calcType:"PFA", fullName:"鴻運穩傳外幣分紅終身壽險", paymentTerm:1, freqOptions:["躉繳"], hasScenario:false, faceDefault:30 },
+  { code:"PFK2", apiProduct:"PFK2", calcType:"PFA", fullName:"智富紅運外幣分紅終身壽險", paymentTerm:2, faceDefault:15 },
   { code:"FPE2", apiProduct:"FPE2", calcType:"PFA", fullName:"鴻運穩傳外幣分紅終身壽險", paymentTerm:2, hasScenario:false, faceDefault:30 },
+  { code:"FBX",  apiProduct:"FBX",  calcType:"PFA", tableType:"UL", fullName:"美盈鴻旺外幣利率變動型終身壽險", freqOptions:["躉繳","年繳","半年繳","季繳","月繳"], mixedSingle:true, paymentTerm:2, hasScenario:false, faceDefault:20 },
+  { code:"FBO",  apiProduct:"FBO",  calcType:"PFA", tableType:"UL", fullName:"美利大運外幣利率變動型終身壽險", termOptions:[2,6,8], paymentTerm:2, hasScenario:false, faceDefault:10 },
+  { code:"PFA3", apiProduct:"PFA3", calcType:"PFA", fullName:"美富紅運外幣分紅終身壽險", paymentTerm:3 },
   { code:"FPG",  apiProduct:"FPG",  calcType:"PFA", fullName:"紅運心傳外幣分紅終身壽險", termOptions:[3,5], paymentTerm:3, hasScenario:false, faceDefault:10 },
 ];
-// 需要新增其他商品（保額型分紅／利變型保單）時，再跟建議書系統的 MODULES 清單對照補回來。
+// 只收錄「保額型分紅／利變型保單」兩類裡繳費年期為 2 年或 3 年期的商品（生存金／退休規劃／歲滿期商品不適用本頁的增貸投資試算邏輯，故不收錄）。
+// 需要新增其他商品時，再跟建議書系統的 MODULES 清單對照補回來。
 
 function buildPolicyOptions() {
   const sel = document.getElementById('policySelect');
