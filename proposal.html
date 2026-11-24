@@ -667,9 +667,16 @@
       name: "生存金（邊存邊領）",
       icon: "📥",
       products: [
-        { code: "PFE", status: "pending" },
-        { code: "PFI", status: "pending" },
-        { code: "PFC", status: "pending" },
+        { code: "PFC", status: "ready", calcType: "PFA", apiProduct: "PFC", termOptions: [3, 6], paymentTerm: 3,
+          fullName: "美年紅旺外幣分紅終身保險", ageHint: "0～70 歲（依繳費年期而定）", faceDefault: 20, faceMinWan: 0.5 },
+        { code: "PFE", status: "ready", calcType: "PFA", apiProduct: "PFE", paymentTerm: 2,
+          fullName: "雙美紅運外幣分紅終身保險", ageHint: "0～70 歲", faceDefault: 19.7, faceMinWan: 0.5 },
+        { code: "PFI", status: "ready", calcType: "PFA", apiProduct: "PFI", termOptions: [10, 20], paymentTerm: 10,
+          fullName: "紅運滿滿外幣分紅終身保險", ageHint: "0～65 歲（依繳費年期而定）", faceDefault: 30, faceMinWan: 0.5 },
+        { code: "PFO", status: "ready", calcType: "PFA", apiProduct: "PFO", termOptions: [6, 10, 20], paymentTerm: 6,
+          fullName: "美滿富外幣分紅終身保險", ageHint: "0～65 歲（依繳費年期而定，繳費期滿後開始領生存金）", faceDefault: 6.2, faceMinWan: 0.5 },
+        { code: "FPD", status: "ready", calcType: "PFA", apiProduct: "FPD", termOptions: [3, 6], paymentTerm: 3,
+          fullName: "優享紅外幣分紅終身保險", hasScenario: false, ageHint: "0～70 歲（依繳費年期而定）", faceDefault: 10, faceMinWan: 0.5 },
       ]
     },
     {
