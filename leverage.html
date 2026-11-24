@@ -377,9 +377,12 @@
       <h2>保單試算結果</h2>
       <div class="metric-grid" id="policy-metrics"></div>
       <div class="cashflow-note" id="policy-summary"></div>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+        <button id="policy-currency-btn" onclick="togglePolicyCurrency()" style="font-size:12px; font-weight:700; color:#0071e3; background:#eef6ff; border:none; border-radius:999px; padding:6px 14px; cursor:pointer;">換算台幣</button>
+      </div>
       <div style="max-height:420px; overflow-y:auto;">
       <table>
-        <thead><tr><th>保單年度</th><th>保險年齡</th><th>累計實繳保費</th><th>年度末解約金額</th><th>解約獲利</th></tr></thead>
+        <thead id="policy-thead"></thead>
         <tbody id="policy-table"></tbody>
       </table>
       </div>
@@ -688,20 +691,11 @@ const POLICY_API_BASE = "https://proposal-calculator-backend-production.up.railw
 // 與「建議書系統」proposal.html 的 MODULES 相同資料（僅取保額型分紅／利變型保單兩類、狀態為 ready 者）。
 // 若建議書系統新增/調整這兩類商品，請同步更新這裡。
 const POLICY_OPTIONS = [
-  { code:"PFK1", apiProduct:"PFK1", calcType:"PFA", fullName:"智富紅運外幣分紅終身壽險", paymentTerm:1, freqOptions:["躉繳"], faceDefault:15 },
   { code:"FPE1", apiProduct:"FPE1", calcType:"PFA", fullName:"鴻運穩傳外幣分紅終身壽險", paymentTerm:1, freqOptions:["躉繳"], hasScenario:false, faceDefault:30 },
-  { code:"PFK2", apiProduct:"PFK2", calcType:"PFA", fullName:"智富紅運外幣分紅終身壽險", paymentTerm:2, faceDefault:15 },
   { code:"FPE2", apiProduct:"FPE2", calcType:"PFA", fullName:"鴻運穩傳外幣分紅終身壽險", paymentTerm:2, hasScenario:false, faceDefault:30 },
-  { code:"PFA3", apiProduct:"PFA3", calcType:"PFA", fullName:"美富紅運外幣分紅終身壽險", paymentTerm:3, faceDefault:20 },
   { code:"FPG",  apiProduct:"FPG",  calcType:"PFA", fullName:"紅運心傳外幣分紅終身壽險", termOptions:[3,5], paymentTerm:3, hasScenario:false, faceDefault:10 },
-  { code:"PFA6", apiProduct:"PFA6", calcType:"PFA", fullName:"美富紅運外幣分紅終身壽險", paymentTerm:6, faceDefault:20 },
-  { code:"PFJ6", apiProduct:"PFJ6", calcType:"PFA", fullName:"美富紅盈外幣分紅終身壽險", paymentTerm:6, hasScenario:false, faceDefault:10 },
-  { code:"PFD",  apiProduct:"PFD",  calcType:"PFA", fullName:"紅富美好外幣分紅終身壽險", termOptions:[10,20], paymentTerm:10, faceDefault:10 },
-  { code:"FBV",  apiProduct:"FBV",  calcType:"PFA", tableType:"UL", fullName:"美裕富足外幣利率變動型終身壽險", freqOptions:["躉繳"], paymentTerm:1, hasScenario:false, faceDefault:5 },
-  { code:"FBX",  apiProduct:"FBX",  calcType:"PFA", tableType:"UL", fullName:"美盈鴻旺外幣利率變動型終身壽險", freqOptions:["躉繳","年繳","半年繳","季繳","月繳"], mixedSingle:true, paymentTerm:2, hasScenario:false, faceDefault:20 },
-  { code:"FBO",  apiProduct:"FBO",  calcType:"PFA", tableType:"UL", fullName:"美利大運外幣利率變動型終身壽險", termOptions:[2,6,8], paymentTerm:2, hasScenario:false, faceDefault:10 },
-  { code:"FBM",  apiProduct:"FBM",  calcType:"PFA", tableType:"UL", fullName:"順順美利外幣利率變動型終身壽險", termOptions:[6,10,20], paymentTerm:6, hasScenario:false, faceDefault:30 },
 ];
+// 需要新增其他商品（保額型分紅／利變型保單）時，再跟建議書系統的 MODULES 清單對照補回來。
 
 function buildPolicyOptions() {
   const sel = document.getElementById('policySelect');
@@ -863,6 +857,54 @@ async function calcPolicy() {
   }
 }
 
+let policyTableRows = [];
+let policyTableRate = 0;
+let policyTableCurrency = 'USD';
+
+function togglePolicyCurrency() {
+  if (!(policyTableRate > 0)) return;
+  policyTableCurrency = policyTableCurrency === 'TWD' ? 'USD' : 'TWD';
+  renderPolicyTable();
+}
+
+function renderPolicyTable() {
+  const twd = policyTableCurrency === 'TWD' && policyTableRate > 0;
+  const unit = twd ? '（台幣）' : '（美元）';
+  const money = v => (v === null || v === undefined) ? '—' : fmt(twd ? v * policyTableRate : v);
+
+  document.getElementById('policy-thead').innerHTML = `<tr>
+    <th>保單年度</th><th>保險年齡</th>
+    <th>累計實繳保費<br><small>${unit}</small></th>
+    <th>年度末解約金額<br><small>${unit}</small></th>
+    <th>解約獲利<br><small>${unit}</small></th>
+  </tr>`;
+
+  const tbody = document.getElementById('policy-table');
+  tbody.innerHTML = '';
+  policyTableRows.forEach(row => {
+    const cash = row.total_cash_value ?? row.cash_value;
+    const cum = row.cum_premium;
+    const gain = (cash !== null && cash !== undefined && cum) ? cash - cum : null;
+    tbody.innerHTML += `<tr>
+      <td>第 ${Math.round(row.policy_year)} 年</td>
+      <td>${row.age !== null && row.age !== undefined ? Math.round(row.age) + ' 歲' : '—'}</td>
+      <td>${money(cum)}</td>
+      <td>${cash !== null && cash !== undefined ? money(cash) : '—'}</td>
+      <td style="color:${gain !== null && gain > 0 ? '#1a8a3c' : '#86868b'}">${gain !== null && gain > 0 ? '+' + money(gain) : '—'}</td>
+    </tr>`;
+  });
+
+  const btn = document.getElementById('policy-currency-btn');
+  if (btn) {
+    if (!(policyTableRate > 0)) {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = '';
+      btn.textContent = twd ? '顯示美元' : '換算台幣';
+    }
+  }
+}
+
 function renderPolicyResults(data, product, rate) {
   const p = data.premiums || {};
   const term = p.payment_term || policyTerm(product);
@@ -881,20 +923,10 @@ function renderPolicyResults(data, product, rate) {
   document.getElementById('policy-summary').textContent =
     `以「${(data.tables[key] || {}).label || key}」情境試算；解約金額／解約獲利為年度末數字。保單為正式商品數字，惟紅利／宣告利率非保證，實際依富邦人壽公告為準。`;
 
-  const tbody = document.getElementById('policy-table');
-  tbody.innerHTML = '';
-  rows.forEach(row => {
-    const cash = row.total_cash_value ?? row.cash_value;
-    const cum = row.cum_premium;
-    const gain = (cash !== null && cash !== undefined && cum) ? cash - cum : null;
-    tbody.innerHTML += `<tr>
-      <td>第 ${Math.round(row.policy_year)} 年</td>
-      <td>${row.age !== null && row.age !== undefined ? Math.round(row.age) + ' 歲' : '—'}</td>
-      <td>${fmt(cum)}</td>
-      <td>${cash !== null && cash !== undefined ? fmt(cash) : '—'}</td>
-      <td style="color:${gain !== null && gain > 0 ? '#1a8a3c' : '#86868b'}">${gain !== null && gain > 0 ? '+' + fmt(gain) : '—'}</td>
-    </tr>`;
-  });
+  policyTableRows = rows;
+  policyTableRate = rate;
+  policyTableCurrency = 'USD';
+  renderPolicyTable();
 
   const downloadBtn = document.getElementById('policy-download-btn');
   if (data.pdf_base64) {
