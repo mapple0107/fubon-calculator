@@ -667,15 +667,15 @@
       name: "生存金（邊存邊領）",
       icon: "📥",
       products: [
-        { code: "PFC", status: "ready", calcType: "PFA", apiProduct: "PFC", termOptions: [3, 6], paymentTerm: 3,
+        { code: "PFC", status: "ready", calcType: "PFA", apiProduct: "PFC", tableType: "SURV", hasDividendPayout: true, termOptions: [3, 6], paymentTerm: 3,
           fullName: "美年紅旺外幣分紅終身保險", ageHint: "0～70 歲（依繳費年期而定）", faceDefault: 20, faceMinWan: 0.5 },
-        { code: "PFE", status: "ready", calcType: "PFA", apiProduct: "PFE", paymentTerm: 2,
+        { code: "PFE", status: "ready", calcType: "PFA", apiProduct: "PFE", tableType: "SURV", hasDividendPayout: true, paymentTerm: 2,
           fullName: "雙美紅運外幣分紅終身保險", ageHint: "0～70 歲", faceDefault: 19.7, faceMinWan: 0.5 },
-        { code: "PFI", status: "ready", calcType: "PFA", apiProduct: "PFI", termOptions: [10, 20], paymentTerm: 10,
+        { code: "PFI", status: "ready", calcType: "PFA", apiProduct: "PFI", tableType: "SURV", hasDividendPayout: true, termOptions: [10, 20], paymentTerm: 10,
           fullName: "紅運滿滿外幣分紅終身保險", ageHint: "0～65 歲（依繳費年期而定）", faceDefault: 30, faceMinWan: 0.5 },
-        { code: "PFO", status: "ready", calcType: "PFA", apiProduct: "PFO", termOptions: [6, 10, 20], paymentTerm: 6,
+        { code: "PFO", status: "ready", calcType: "PFA", apiProduct: "PFO", tableType: "SURV", termOptions: [6, 10, 20], paymentTerm: 6,
           fullName: "美滿富外幣分紅終身保險", ageHint: "0～65 歲（依繳費年期而定，繳費期滿後開始領生存金）", faceDefault: 6.2, faceMinWan: 0.5 },
-        { code: "FPD", status: "ready", calcType: "PFA", apiProduct: "FPD", termOptions: [3, 6], paymentTerm: 3,
+        { code: "FPD", status: "ready", calcType: "PFA", apiProduct: "FPD", tableType: "SURV", termOptions: [3, 6], paymentTerm: 3,
           fullName: "優享紅外幣分紅終身保險", hasScenario: false, ageHint: "0～70 歲（依繳費年期而定）", faceDefault: 10, faceMinWan: 0.5 },
       ]
     },
@@ -1570,6 +1570,13 @@
               <option value="低分紅">低分紅（較低紅利）</option>
             </select>
           </div>
+          ${product.hasDividendPayout ? `<div class="field">
+            <label>年度保單紅利給付方式</label>
+            <select id="pfa-dividend-payout">
+              <option value="現金給付">現金給付</option>
+              <option value="儲存生息">儲存生息</option>
+            </select>
+          </div>` : ''}
         </div>
       </div>
 
@@ -1689,6 +1696,7 @@
       retire_age: pfaRetire(product),
       payment_freq: document.getElementById('pfa-payment-freq').value,
       dividend_scenario: document.getElementById('pfa-dividend-scenario').value,
+      dividend_payout_method: (document.getElementById('pfa-dividend-payout') || {}).value,
       bonus_method: (document.getElementById('pfa-bonus-method') || {}).value,
       input_mode: inputMode,
       relationship: document.getElementById('pfa-relationship').value,
@@ -1722,7 +1730,7 @@
         payload.premium_total_amount = Math.round(Number(document.getElementById('pfa-total-twd').value) * 10000 / rate);
       }
     }
-    pfaLastCalc = { rate: rate > 0 ? rate : null, term: pfaTerm(product), retire: pfaRetire(product), date: rate === pfaRate.value ? pfaRate.date : '' };
+    pfaLastCalc = { rate: rate > 0 ? rate : null, term: pfaTerm(product), retire: pfaRetire(product), date: rate === pfaRate.value ? pfaRate.date : '', dividendPayout: payload.dividend_payout_method || null };
     pfaCurrentProduct = product;
 
     btn.disabled = true;
@@ -1779,6 +1787,19 @@
     { key: 'cum_premium', label: '累計實繳保費' },
     { key: 'total_death_benefit', fallback: 'death_benefit', label: '年度末身故時<br>可領總金額' },
     { key: 'total_cash_value', fallback: 'cash_value', label: '年度末解約時<br>可領總金額' },
+    { key: 'surrender_gain', label: '解約獲利', calc: true },
+  ];
+  // 生存金（邊存邊領）商品：PFC/PFE/PFI/PFO/FPD。「生存金」欄依年度保單紅利給付方式顯示不同內容——
+  // 現金給付：當年度生存金再加上同年度領走的年度保單紅利；儲存生息：紅利留在保單裡，只顯示生存金本身。
+  // 解約獲利＝年度末解約可領總金額＋累積已領生存金＋（現金給付時）累積已領年度保單紅利－累計實繳保費。
+  const SURV_TABLE_COLUMNS = [
+    { key: 'policy_year', label: '保單年度' },
+    { key: 'age', label: '保險年齡' },
+    { key: 'annual_premium', label: '年度實繳保費' },
+    { key: 'cum_premium', label: '累計實繳保費' },
+    { key: 'survival_display', label: '生存金', calc: true },
+    { key: 'total_death_benefit', fallback: 'death_benefit', label: '年度末身故/完全失能<br>可領總金額' },
+    { key: 'total_cash_value', fallback: 'cash_value', label: '年度末解約<br>可領總金額' },
     { key: 'surrender_gain', label: '解約獲利', calc: true },
   ];
 
@@ -1892,18 +1913,25 @@
       : Math.round(twd ? v * pfaLastCalc.rate : v).toLocaleString('zh-TW');
     const tType = pfaCurrentProduct && pfaCurrentProduct.tableType;
     const isRet = tType === 'RET';
-    const columns = tType === 'UL' ? UL_TABLE_COLUMNS : isRet ? RET_TABLE_COLUMNS : PFA_TABLE_COLUMNS;
-    const head = '<tr>' + columns.map(c =>
-      `<th>${c.label}${c.key === 'policy_year' || c.key === 'age' ? '' : `<br><small>${unit}</small>`}</th>`).join('') + '</tr>';
-    const showRatio = RATIO_SCENARIOS.includes(pfaCurrentTableKey);
+    const isSurv = tType === 'SURV';
+    const survCash = pfaLastCalc.dividendPayout === '現金給付';
+    const columns = tType === 'UL' ? UL_TABLE_COLUMNS : isRet ? RET_TABLE_COLUMNS : isSurv ? SURV_TABLE_COLUMNS : PFA_TABLE_COLUMNS;
+    const head = '<tr>' + columns.map(c => {
+      const label = c.key === 'survival_display' ? (survCash ? '生存金＋年度保單紅利' : '生存金') : c.label;
+      return `<th>${label}${c.key === 'policy_year' || c.key === 'age' ? '' : `<br><small>${unit}</small>`}</th>`;
+    }).join('') + '</tr>';
+    // 生存金商品一律不顯示報酬率／保障比／增值率
+    const showRatio = !isSurv && RATIO_SCENARIOS.includes(pfaCurrentTableKey);
     const faceUsd = pfaLastResultForRatio ? pfaLastResultForRatio.premiums.final_face_amount_wan * 10000 : null;
     const pct = v => `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
-    // 退休商品：解約價值另加上已領的生存保險金，才能反映實際拿回的總金額
+    // 退休商品／生存金商品：解約價值另加上已領的生存保險金，才能反映實際拿回的總金額
     const cashOf = r => {
       if (!r) return null;
       const c = r.total_cash_value ?? r.cash_value;
-      return c === null || c === undefined ? null : c + (isRet ? (r.cum_survival_total || 0) : 0);
+      return c === null || c === undefined ? null : c + ((isRet || isSurv) ? (r.cum_survival_total || 0) : 0);
     };
+    // 生存金商品：年度保單紅利若選「現金給付」，解約獲利要再加上歷年已實際領走的紅利總和
+    let survCumDividend = 0;
     const ratioCells = (row, prev) => {
       const cash = cashOf(row);
       const prevCash = cashOf(prev);
@@ -1924,25 +1952,36 @@
     const ratioHead = showRatio
       ? `<th class="ratio">報酬率<br><small>${isRet ? '(解約+已領−累計)÷累計' : '(解約−累計)÷累計'}</small></th><th class="ratio">保障比<br><small>身故÷累計保費</small></th>${isRet ? '<th class="ratio">領息率<br><small>生存金÷累計保費</small></th>' : '<th class="ratio">增值率<br><small>(本年−前一年)÷前一年</small></th>'}`
       : '';
-    const body = tableData.rows.map((row, i) =>
-      '<tr>' + columns.map(c => {
+    const body = tableData.rows.map((row, i) => {
+      // 現金給付模式下，年度保單紅利當年即領走，計入累積已領紅利（供解約獲利使用）
+      if (isSurv && survCash) survCumDividend += (row.annual_dividend || 0);
+      return '<tr>' + columns.map(c => {
         if (c.key === 'policy_year' || c.key === 'age') return `<td>${row[c.key] === null || row[c.key] === undefined ? '—' : Math.round(row[c.key])}</td>`;
+        if (c.key === 'survival_display') {
+          // 現金給付：生存金＋當年度領走的年度保單紅利；儲存生息：紅利留在保單裡，只顯示生存金本身
+          const base = row.survival_total ?? row.survival_benefit;
+          const v = (base === null || base === undefined) ? null : base + (survCash ? (row.annual_dividend || 0) : 0);
+          return `<td class="surv">${v ? money(v) : ''}</td>`;
+        }
         if (c.key === 'surrender_gain') {
-          // 解約獲利＝解約時可領總金額 − 累計實繳保費，尚未獲利（≤0）時留白
+          // 解約獲利＝解約可領總金額(含已領生存金)＋（現金給付時）累積已領年度保單紅利－累計實繳保費，尚未獲利（≤0）時留白
           const cash = cashOf(row);
-          const gain = (cash !== null && cash !== undefined && row.cum_premium) ? cash - row.cum_premium : null;
+          const extra = isSurv && survCash ? survCumDividend : 0;
+          const gain = (cash !== null && cash !== undefined && row.cum_premium) ? cash + extra - row.cum_premium : null;
           return `<td class="gain">${gain !== null && gain > 0 ? money(gain) : ''}</td>`;
         }
         if (c.blankZero && !row[c.key]) return '<td></td>';
         return `<td class="${c.blankZero ? 'surv' : ''}">${money(row[c.key] ?? (c.fallback ? row[c.fallback] : null))}</td>`;
       }).join('')
-      + (showRatio ? ratioCells(row, tableData.rows[i - 1]) : '') + '</tr>'
-    ).join('');
+      + (showRatio ? ratioCells(row, tableData.rows[i - 1]) : '') + '</tr>';
+    }).join('');
     tableEl.innerHTML = head.replace(/<\/tr>$/, ratioHead + '</tr>') + body;
     const note = document.getElementById('pfa-ratio-note');
     if (note) {
       const isUL = pfaCurrentProduct && pfaCurrentProduct.tableType === 'UL';
-      note.textContent = showRatio
+      note.textContent = isSurv
+        ? `生存保險金自保單生效起每年給付（列在該保單年度，保險年齡為年度初年齡），金額含中分紅紅利增加的部分；${survCash ? '目前選擇「現金給付」，生存金欄位已加總當年度領走的年度保單紅利' : '目前選擇「儲存生息」，年度保單紅利留存在保單裡增值，不計入生存金欄位'}。解約獲利＝年度末解約可領總金額＋累計已領生存保險金${survCash ? '＋累計已領年度保單紅利' : ''}－累計實繳保費（尚未獲利時留白）。`
+        : showRatio
         ? (isRet
           ? '生存保險金於保單週年日（被保險人到達約定年齡起）每年給付，列在該保單年度（保險年齡為年度初年齡），金額含中分紅紅利增加的部分。報酬率、解約獲利以「年度末解約時可領總金額＋累計已領生存保險金」計算（即解約時實際拿回的總金額）；保障比＝身故總金額÷累計實繳保費；領息率＝當年度可領生存保險金（含紅利）÷累計實繳保費，從開始領取的年度起顯示。'
           : `報酬率、保障比、增值率以「年度末${isUL ? '解約／身故時可領總金額（含增值回饋分享金）' : '解約／身故時可領總金額（含中分紅紅利）'}」計算：保障比＝身故總金額÷累計實繳保費，增值率＝（本年度−前一年度解約總金額）÷前一年度解約總金額，即當年度的單利增值率。解約獲利＝解約總金額−累計實繳保費（尚未獲利時留白）。增值率只顯示回本後的年度。`)
