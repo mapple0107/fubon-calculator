@@ -371,6 +371,10 @@
             <option value="儲存生息">儲存生息</option>
           </select>
         </div>
+        <div class="field" id="policyRetireField" style="display:none;">
+          <label>開始領取生存保險金年齡</label>
+          <select id="policyRetire"></select>
+        </div>
       </div>
       <div class="field" style="margin:14px 0;">
         <label>試算依據</label>
@@ -839,6 +843,8 @@ const POLICY_OPTIONS = [
   { code:"FBO",  apiProduct:"FBO",  calcType:"PFA", tableType:"UL", fullName:"美利大運外幣利率變動型終身壽險", termOptions:[2,6,8], paymentTerm:2, hasScenario:false, faceDefault:10 },
   { code:"PFA3", apiProduct:"PFA3", calcType:"PFA", fullName:"美富紅運外幣分紅終身壽險", paymentTerm:3 },
   { code:"FPG",  apiProduct:"FPG",  calcType:"PFA", fullName:"紅運心傳外幣分紅終身壽險", termOptions:[3,5], paymentTerm:3, hasScenario:false, faceDefault:10 },
+  { code:"PF55~65", apiProduct:"PF5", calcType:"PFA", tableType:"RET", fullName:"美富優退外幣分紅終身保險", termOptions:[3,6], paymentTerm:3,
+    retireOptions:[55,60,65], retireDefault:65, faceDefault:10 },
 ];
 // 只收錄「保額型分紅／利變型保單」兩類裡繳費年期為 2 年或 3 年期的商品（生存金／退休規劃／歲滿期商品不適用本頁的增貸投資試算邏輯，故不收錄）。
 // 需要新增其他商品時，再跟建議書系統的 MODULES 清單對照補回來。
@@ -892,6 +898,14 @@ function onPolicySelectChange() {
 
   document.getElementById('policyScenarioField').style.display = product.hasScenario === false ? 'none' : '';
   document.getElementById('policyBonusField').style.display = product.tableType === 'UL' ? '' : 'none';
+  const retireField = document.getElementById('policyRetireField');
+  const retireSel = document.getElementById('policyRetire');
+  if (product.retireOptions) {
+    retireSel.innerHTML = product.retireOptions.map(a => `<option value="${a}" ${a === product.retireDefault ? 'selected' : ''}>${a} 歲起每年領</option>`).join('');
+    retireField.style.display = '';
+  } else {
+    retireField.style.display = 'none';
+  }
   document.getElementById('policyFaceAmount').value = product.faceDefault ?? 20;
 
   document.getElementById('policyProductHint').textContent =
@@ -953,7 +967,7 @@ async function calcPolicy() {
     birth_month: birth.getMonth() + 1,
     birth_day: birth.getDate(),
     payment_term: policyTerm(product),
-    retire_age: null,
+    retire_age: product.retireOptions ? Number(document.getElementById('policyRetire').value) : null,
     payment_freq: document.getElementById('policyFreq').value,
     dividend_scenario: product.hasScenario === false ? undefined : document.getElementById('policyScenario').value,
     bonus_method: product.tableType === 'UL' ? document.getElementById('policyBonus').value : undefined,
