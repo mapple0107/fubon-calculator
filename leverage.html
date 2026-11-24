@@ -133,6 +133,9 @@
   .row-tag.grace { background: #fff3e0; color: #c77700; }
   .row-tag.covered { background: #e3fcef; color: #0a8a4c; }
   .row-tag.exceed { background: #e3fcef; color: #0a8a4c; }
+  .row-tag.payoff { background: #eef6ff; color: #0071e3; cursor: pointer; user-select: none; transition: background .12s; }
+  .row-tag.payoff:hover { background: #dcecff; }
+  tr.payoff-detail-row td { background: #f8fbff; text-align: left; padding: 14px 18px; }
   .metric-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.1rem; }
   @media (max-width: 900px) { .metric-grid-4 { grid-template-columns: repeat(2, 1fr); } }
   tr.exceed-row td { background: #f0fdf6; }
@@ -692,6 +695,14 @@ function findPolicyRowForYear(year) {
   return policyTableRows.find(r => Math.round(r.policy_year) === year);
 }
 
+// 「清償房貸」標籤目前展開中的年度（試做版：點擊標籤展開/收合該列下方的現金流說明）。
+let payoffExpandedYears = new Set();
+function togglePayoffRow(year) {
+  if (payoffExpandedYears.has(year)) payoffExpandedYears.delete(year);
+  else payoffExpandedYears.add(year);
+  renderSummary();
+}
+
 function renderSummary() {
   const hint = document.getElementById('summary-hint');
   const content = document.getElementById('summary-content');
@@ -732,9 +743,14 @@ function renderSummary() {
   tbody.innerHTML = '';
   rowsOut.forEach(r => {
     const isExceedRow = r.row.year === exceedYear;
-    const tag = isExceedRow ? '<span class="row-tag exceed">超越</span>' : '';
+    const canPayoff = r.gap >= 0 && !!fundResult;
+    const isExpanded = canPayoff && payoffExpandedYears.has(r.row.year);
+    let tags = isExceedRow ? '<span class="row-tag exceed">超越</span>' : '';
+    if (canPayoff) {
+      tags += `<span class="row-tag payoff" onclick="togglePayoffRow(${r.row.year})">💰 清償房貸 ${isExpanded ? '▲' : '▼'}</span>`;
+    }
     tbody.innerHTML += `<tr class="${isExceedRow ? 'exceed-row' : ''}">
-      <td>第 ${r.row.year} 年 ${tag}</td>
+      <td>第 ${r.row.year} 年 ${tags}</td>
       <td>${r.age !== null ? r.age + ' 歲' : '—'}</td>
       <td style="color:#d0392b">-${fmt(r.row.endBal)}</td>
       <td style="color:#1a8a3c">${r.cashTwd !== null ? '+' + fmt(r.cashTwd) : '—'}</td>
@@ -742,6 +758,22 @@ function renderSummary() {
       <td style="color:${r.gap>=0?'#1a8a3c':'#d0392b'}">${r.gap>=0?'+':''}${fmt(r.gap)}</td>
       <td>${r.deathTwd !== null ? fmt(r.deathTwd) : '—'}</td>
     </tr>`;
+
+    if (isExpanded) {
+      const isGrace = r.row.year <= mortgageGraceYears;
+      const payment = isGrace ? mortgageGraceMonthly : mortgageAmortMonthly;
+      const monthlyTwd = fundResult.monthlyTwd;
+      const beforeCashflow = monthlyTwd - payment;
+      tbody.innerHTML += `<tr class="payoff-detail-row">
+        <td colspan="7">
+          <div class="cashflow-note" style="margin-bottom:0;">
+            假設在第 ${r.row.year} 年（借款人 ${r.age !== null ? r.age + ' 歲' : '—'}）用保單現金價值一次還清當時房貸餘額 TWD ${fmt(r.row.endBal)}，往後不需再繳房貸月付款（示意試算，實際解約／保單借款需依保單條款與富邦人壽規定辦理）。<br>
+            清償後月現金流：<b style="color:#1a8a3c;">+${fmt(monthlyTwd)}</b>／月（配息基金月配息，全額保留）　｜　清償後年現金流：<b style="color:#1a8a3c;">+${fmt(monthlyTwd*12)}</b>／年<br>
+            清償前月現金流為配息－房貸月付 = ${beforeCashflow>=0?'+':''}${fmt(beforeCashflow)}／月，清償後每月增加 TWD ${fmt(payment)}（即原房貸月付金額）。
+          </div>
+        </td>
+      </tr>`;
+    }
   });
 
   const lastRow = mortgageSchedule[mortgageSchedule.length - 1];
