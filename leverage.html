@@ -169,7 +169,7 @@
     <img src="avatar.png" alt="頭像" style="width:100px; height:100px; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.15); flex-shrink:0;">
     <div>
       <h1 style="margin-bottom:2px; font-size:2.6rem;">房產活化試算機</h1>
-      <p class="subtitle" style="margin-bottom:0;">房貸試算｜配息基金｜保單試算｜資產負債比</p>
+      <p class="subtitle" style="margin-bottom:0;">房貸試算｜配息基金｜保單試算｜資產負債表</p>
     </div>
   </div>
 
@@ -192,7 +192,7 @@
     <button class="mode-tab active" id="tab-mortgage" onclick="switchTab('mortgage')">🏦 房貸試算</button>
     <button class="mode-tab" id="tab-fund" onclick="switchTab('fund')">💰 配息基金</button>
     <button class="mode-tab" id="tab-policy" onclick="switchTab('policy')">📋 保單試算</button>
-    <button class="mode-tab" id="tab-summary" onclick="switchTab('summary')">📊 資產負債比</button>
+    <button class="mode-tab" id="tab-summary" onclick="switchTab('summary')">📊 資產負債表</button>
   </div>
 
   <!-- 房貸試算 -->
@@ -418,10 +418,10 @@
     </div>
   </div>
 
-  <!-- 資產負債比 -->
+  <!-- 資產負債表 -->
   <div id="section-summary" class="section">
     <div class="card">
-      <h2>資產負債比</h2>
+      <h2>資產負債表</h2>
       <div class="note">整合「房貸試算」的房貸餘額與「保單試算」的保單現金價值、身故保額，觀察隨時間推移，保單現金價值是否足以覆蓋剩餘房貸餘額（配息基金另列參考，因配息已用於繳納房貸，不重複計入此差額）。本表數字均為簡化假設，僅供概念參考。</div>
       <div class="hint" id="summary-hint">請先完成「房貸試算」與「保單試算」兩個分頁的試算，這裡才會顯示結果。</div>
       <div id="summary-content" style="display:none;">
@@ -704,7 +704,7 @@ function renderFundCashflow() {
   });
 }
 
-/* ---------- 資產負債比 ---------- */
+/* ---------- 資產負債表 ---------- */
 // 依「保單試算」分頁最近一次試算結果（policyTableRows／policyTableRate），
 // 找出與房貸試算某一年度對應的保單年度資料（兩者皆從第 1 年開始，視為同一年投保／貸款）。
 function findPolicyRowForYear(year) {
