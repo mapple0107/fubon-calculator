@@ -136,6 +136,22 @@
   .row-tag.payoff { background: #eef6ff; color: #0071e3; cursor: pointer; user-select: none; transition: background .12s; }
   .row-tag.payoff:hover { background: #dcecff; }
   tr.payoff-detail-row td { background: #f8fbff; text-align: left; padding: 14px 18px; }
+  .payoff-note { font-size: 13px; color: #334155; line-height: 1.7; font-weight: 500; }
+  .payoff-compare { font-size: 12px; color: #64748b; line-height: 1.7; }
+  .payoff-disclaimer { font-size: 11px; color: #94a3b8; margin-top: 6px; line-height: 1.6; }
+  .payoff-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+  @media (max-width: 560px) { .payoff-metrics { grid-template-columns: 1fr; } }
+  .payoff-metric {
+    background: linear-gradient(135deg, #eafbf0, #f3fef7); border: 1px solid #d7f5e3; border-radius: 16px;
+    padding: 14px 16px; text-align: center;
+  }
+  .payoff-metric .pm-label { font-size: 12px; color: #0a8a4c; font-weight: 700; margin-bottom: 6px; }
+  .payoff-metric .pm-val {
+    font-size: 26px; font-weight: 800; color: #0a8a4c; letter-spacing: -0.02em;
+    font-family: "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .payoff-metric .pm-sub { font-size: 11px; color: #86868b; margin-top: 4px; }
   .metric-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.1rem; }
   @media (max-width: 900px) { .metric-grid-4 { grid-template-columns: repeat(2, 1fr); } }
   tr.exceed-row td { background: #f0fdf6; }
@@ -766,10 +782,24 @@ function renderSummary() {
       const beforeCashflow = monthlyTwd - payment;
       tbody.innerHTML += `<tr class="payoff-detail-row">
         <td colspan="7">
-          <div class="cashflow-note" style="margin-bottom:0;">
-            假設在第 ${r.row.year} 年（借款人 ${r.age !== null ? r.age + ' 歲' : '—'}）用保單現金價值一次還清當時房貸餘額 TWD ${fmt(r.row.endBal)}，往後不需再繳房貸月付款（示意試算，實際解約／保單借款需依保單條款與富邦人壽規定辦理）。<br>
-            清償後月現金流：<b style="color:#1a8a3c;">+${fmt(monthlyTwd)}</b>／月（配息基金月配息，全額保留）　｜　清償後年現金流：<b style="color:#1a8a3c;">+${fmt(monthlyTwd*12)}</b>／年<br>
-            清償前月現金流為配息－房貸月付 = ${beforeCashflow>=0?'+':''}${fmt(beforeCashflow)}／月，清償後每月增加 TWD ${fmt(payment)}（即原房貸月付金額）。
+          <div class="payoff-detail">
+            <div class="payoff-note">假設在第 ${r.row.year} 年（借款人 ${r.age !== null ? r.age + ' 歲' : '—'}）用保單現金價值一次還清房貸餘額 TWD ${fmt(r.row.endBal)}。</div>
+            <div class="payoff-note">之後不需再繳房貸月付款，現金流全部轉為保留配息。</div>
+            <div class="payoff-metrics">
+              <div class="payoff-metric">
+                <div class="pm-label">💵 清償後月現金流</div>
+                <div class="pm-val">+${fmt(monthlyTwd)}</div>
+                <div class="pm-sub">元／月（配息基金月配息，全額保留）</div>
+              </div>
+              <div class="payoff-metric">
+                <div class="pm-label">📅 清償後年現金流</div>
+                <div class="pm-val">+${fmt(monthlyTwd*12)}</div>
+                <div class="pm-sub">元／年</div>
+              </div>
+            </div>
+            <div class="payoff-compare">清償前月現金流為配息－房貸月付，等於 ${beforeCashflow>=0?'+':''}${fmt(beforeCashflow)}／月。</div>
+            <div class="payoff-compare">清償後每月增加 TWD ${fmt(payment)}，即原本的房貸月付金額。</div>
+            <div class="payoff-disclaimer">示意試算，實際解約或保單借款需依保單條款與富邦人壽規定辦理。</div>
           </div>
         </td>
       </tr>`;
