@@ -1041,12 +1041,19 @@
 
   // 比較商品：保額型分紅與利變型保單的商品可以放在一起比較
   function pcIsRetModule(m) { return m.products.every(p => p.tableType === 'RET'); }
+  // PF55~65 另外加進一般比較清單（指定開放跟分紅／利變型一起比較，不受下面「退休商品只跟退休商品比較」限制）
+  function pcExtraModule() {
+    const m = MODULES.find(mm => mm.name === '退休規劃');
+    const p = m && m.products.find(pp => pp.code === 'PF55~65');
+    return p ? { name: '退休規劃（可跨類比較）', icon: '🏖️', products: [p] } : null;
+  }
   function pcModules() {
     const all = MODULES.filter(m => m.products.length && m.products.every(p => p.calcType === 'PFA'));
     // 退休規劃商品只和退休規劃商品比較；分紅與利變型可一起比較
     const cur = dv.moduleIndex !== null ? MODULES[dv.moduleIndex] : null;
     if (cur && pcIsRetModule(cur)) return [cur];   // 退休規劃、歲滿期：只和同分類商品比較
-    return all.filter(m => !pcIsRetModule(m));
+    const extra = pcExtraModule();
+    return extra ? [...all.filter(m => !pcIsRetModule(m)), extra] : all.filter(m => !pcIsRetModule(m));
   }
   function pcProducts() { return pcModules().flatMap(m => m.products); }
   function pcCurrent() { return MODULES[dv.moduleIndex].products[dv.productIndex]; }
