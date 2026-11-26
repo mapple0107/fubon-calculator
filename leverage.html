@@ -111,6 +111,13 @@
     font-variant-numeric: tabular-nums;
   }
   tr:last-child td { border-bottom: none; }
+  table.tbl-summary th:nth-child(1), table.tbl-summary td:nth-child(1) {
+    text-align: left; padding-left: 8px; padding-right: 2px; white-space: nowrap; width: 1%;
+  }
+  table.tbl-summary th:nth-child(2), table.tbl-summary td:nth-child(2) {
+    text-align: left; padding-left: 4px; padding-right: 8px; white-space: nowrap; width: 1%;
+  }
+  table.tbl-summary th:last-child, table.tbl-summary td:last-child { white-space: nowrap; }
   .results { display: none; }
   .results.show { display: block; }
   .summary-row { font-size: 12.5px; color: #86868b; margin-top: 10px; text-align: center; }
@@ -432,11 +439,13 @@
         <div class="cashflow-note" id="summary-fx-note"></div>
         <div class="metric-grid-4" id="summary-metrics"></div>
         <div style="max-height:420px; overflow-y:auto;">
-        <table>
+        <table class="tbl-summary">
           <thead><tr><th>年度</th><th>借款人年齡</th><th>房貸餘額<br><small>（台幣）</small></th><th>保單現金價值</th><th>基金累計投入</th><th>貸款與現價差額</th><th>身故保額<br><small>（台幣）</small></th><th>保單生存保險金<br><small>（台幣／年）</small></th></tr></thead>
           <tbody id="summary-table"></tbody>
         </table>
         </div>
+        <div style="font-size:14px; font-weight:700; color:#1d1d1f; margin:22px 0 10px;">📌 若不清償房貸：持續現金流總覽</div>
+        <div class="metric-grid-5" id="summary-noPayoff"></div>
       </div>
     </div>
   </div>
@@ -793,8 +802,9 @@ function renderSummary() {
       const payment = isGrace ? mortgageGraceMonthly : mortgageAmortMonthly;
       const monthlyTwd = fundResult.monthlyTwd;
       const beforeCashflow = monthlyTwd - payment;
+      const survTwdRow = r.survTwd || 0;
       tbody.innerHTML += `<tr class="payoff-detail-row">
-        <td colspan="7">
+        <td colspan="8">
           <div class="payoff-detail">
             <div class="payoff-note">假設在第 ${r.row.year} 年（借款人 ${r.age !== null ? r.age + ' 歲' : '—'}）用保單現金價值一次還清房貸餘額 TWD ${fmt(r.row.endBal)}。</div>
             <div class="payoff-note">之後不需再繳房貸月付款，現金流全部轉為保留配息。</div>
@@ -806,12 +816,18 @@ function renderSummary() {
               </div>
               <div class="payoff-metric">
                 <div class="pm-label">📅 清償後年現金流</div>
-                <div class="pm-val">+${fmt(monthlyTwd*12)}</div>
-                <div class="pm-sub">元／年</div>
+                <div class="pm-val">+${fmt(monthlyTwd*12 + survTwdRow)}</div>
+                <div class="pm-sub">元／年${survTwdRow ? '（含保單生存保險金）' : ''}</div>
               </div>
+              ${survTwdRow ? `<div class="payoff-metric">
+                <div class="pm-label">🎁 保單生存保險金（年）</div>
+                <div class="pm-val">+${fmt(survTwdRow)}</div>
+                <div class="pm-sub">元／年（保單本身給付，不論是否清償房貸都領得到）</div>
+              </div>` : ''}
             </div>
-            <div class="payoff-compare">清償前月現金流為配息－房貸月付，等於 ${beforeCashflow>=0?'+':''}${fmt(beforeCashflow)}／月。</div>
+            <div class="payoff-compare">清償前月現金流為配息－房貸月付，等於 ${beforeCashflow>=0?'+':''}${fmt(beforeCashflow)}／月${survTwdRow ? `，另外保單每年還會再給付一筆生存保險金 TWD ${fmt(survTwdRow)}（年領一次，不受是否清償房貸影響）` : ''}。</div>
             <div class="payoff-compare">清償後每月增加 TWD ${fmt(payment)}，即原本的房貸月付金額。</div>
+            ${survTwdRow ? `<div class="payoff-compare">保單從第 ${survStartYear} 保單年度起，不論房貸清償與否，每年都會另外給付這筆生存保險金。</div>` : ''}
             <div class="payoff-disclaimer">示意試算，實際解約或保單借款需依保單條款與富邦人壽規定辦理。</div>
           </div>
         </td>
