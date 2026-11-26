@@ -1117,7 +1117,7 @@
     const avail = new Set(variants.map(v => v.key));
     [...pfaCompare.selected].forEach(k => { if (!avail.has(k)) pfaCompare.selected.delete(k); });
     const retMode = pcRetMode();
-    const ageOk = v => !retMode || (v.p.retireOptions || []).includes(pfaCompare.retire);
+    const ageOk = v => !v.p.retireOptions || v.p.retireOptions.includes(pfaCompare.retire);
     const isTotal = pfaCompare.basis === 'total';
     panel.innerHTML = `
       <div class="pc-head">
@@ -1125,8 +1125,10 @@
         <button class="pc-close" onclick="pfaToggleCompare()" aria-label="關閉">✕</button>
       </div>
       ${retMode ? `<div class="pc-label">開始領取生存保險金年齡</div>
+      <div class="radio-group pc-retire">${pcRetAges().map(a => `<div class="radio-pill ${a === pfaCompare.retire ? 'active' : ''}" data-age="${a}">${a} 歲</div>`).join('')}</div>`
+      : pcProducts().some(p => p.retireOptions) ? `<div class="pc-label">退休規劃商品（PF55~65）開始領取年齡</div>
       <div class="radio-group pc-retire">${pcRetAges().map(a => `<div class="radio-pill ${a === pfaCompare.retire ? 'active' : ''}" data-age="${a}">${a} 歲</div>`).join('')}</div>` : ''}
-      <div class="pc-label">選擇要比較的商品（可複選${retMode ? '' : '，分紅與利變型可一起比較'}）</div>
+      <div class="pc-label">選擇要比較的商品（可複選${retMode ? '' : '，分紅、利變型與退休規劃(PF55~65)可一起比較'}）</div>
       ${pcModules().map(m => `
         <div class="pc-group">${m.icon} ${m.name}</div>
         <div class="pc-chips">
@@ -1195,10 +1197,10 @@
     if (pfaCompare.basis === 'total' && !(rate > 0)) { out.innerHTML = '<div class="pc-err">尚未取得美元匯率</div>'; return; }
 
     const retMode = pcRetMode();
-    const list = pcAllVariants().filter(v => pfaCompare.selected.has(v.key)
-      && (!retMode || (v.p.retireOptions || []).includes(pfaCompare.retire)));
+    const ageOk = v => !v.p.retireOptions || v.p.retireOptions.includes(pfaCompare.retire);
+    const list = pcAllVariants().filter(v => pfaCompare.selected.has(v.key) && ageOk(v));
     if (!list.length) { out.innerHTML = `<div class="pc-err">勾選的商品都沒有 ${pfaCompare.retire} 歲領取的選項</div>`; return; }
-    pfaCompare.retMode = retMode; pfaCompare.retireUsed = retMode ? pfaCompare.retire : null;
+    pfaCompare.retMode = retMode; pfaCompare.retireUsed = list.some(v => v.p.retireOptions) ? pfaCompare.retire : null;
     pfaCompare.ulBonusUsed = list.some(v => v.p.tableType === 'UL') ? pfaCompare.ulBonus : null;
     const age = calcInsuranceAndActualAge(y, m, d, new Date());
     pfaCompare.clientLabel = `${val('pfa-name') || '客戶'}・${val('pfa-gender')}・保險年齡 ${age ? age.insuranceAge : '—'} 歲`;
@@ -1337,14 +1339,6 @@
           const r = firstSurv(c.d.tables.zero_possible ? { tables: { [pfaCompare.scenario]: c.d.tables.zero_possible } } : c.d);
           return r ? { n: r.survival_benefit / pcPaidUsd(c.d.premiums), html: `${money(r.survival_benefit)}<br><small>總繳的 ${(r.survival_benefit / pcPaidUsd(c.d.premiums) * 100).toFixed(1)}%</small>` } : null;
         }, { cls: 'pc-key' }),
-        metric('首年可領生存金<br><small>含紅利（依所選情境）</small>', c => {
-          const r = firstSurv(c.d);
-          return r ? { n: r.survival_total / pcPaidUsd(c.d.premiums), html: `${money(r.survival_total)}<br><small>總繳的 ${(r.survival_total / pcPaidUsd(c.d.premiums) * 100).toFixed(1)}%</small>` } : null;
-        }),
-        metric('累計已領生存金<br><small>領到 85 歲</small>', c => {
-          const r = rowsOf(c.d).find(x => Math.round(x.age) + 1 === 85);   // 年度末到達 85 歲
-          return r ? { n: r.cum_survival_total / pcPaidUsd(c.d.premiums), html: `${money(r.cum_survival_total)}<br><small>總繳的 ${Math.round(r.cum_survival_total / pcPaidUsd(c.d.premiums) * 100)}%</small>` } : null;
-        }),
       ] : []),
       metric(`回本年度<br><small>${isRet ? '解約總金額＋已領生存金 ≥ 累計保費' : '解約總金額 ≥ 累計保費'}</small>`, c => {
         const r = rowsOf(c.d).find(r => val(r, 'cash') !== null && r.cum_premium && val(r, 'cash') >= r.cum_premium);
