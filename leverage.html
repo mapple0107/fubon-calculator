@@ -682,12 +682,17 @@ function renderFundCashflow() {
   const fxVal = parseFloat(document.getElementById('fundFxRate').value) || 0;
   const distVal = parseFloat(document.getElementById('fundDist').value) || 0;
 
+  const hasGrace = mortgageGraceYears > 0;
   document.getElementById('fund-metrics').innerHTML = `
     <div class="metric"><div class="m-label">💵 實際入帳</div><div class="m-val">${fmt(fundResult.eff)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">元（手續費已扣）</div></div>
     <div class="metric"><div class="m-label">📦 可得單位數</div><div class="m-val">${fmt(fundResult.units,2)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">淨值 ${navVal}．匯率 ${fxVal}</div></div>
     <div class="metric"><div class="m-label">💰 月配息</div><div class="m-val">${fmt(monthlyTwd)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">元/月</div></div>
+    ${hasGrace ? `
     <div class="metric"><div class="m-label">🏦 寬限期月現金流</div><div class="m-val" style="color:${cashflowGrace>=0?'#1a8a3c':'#d0392b'};">${cashflowGrace>=0?'+':''}${fmt(cashflowGrace)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－月息 ${fmt(graceMonthly)}</div></div>
     <div class="metric"><div class="m-label">📅 寬限後月現金流</div><div class="m-val" style="color:${cashflowAmort>=0?'#1a8a3c':'#d0392b'};">${cashflowAmort>=0?'+':''}${fmt(cashflowAmort)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－月付 ${fmt(amortMonthly)}</div></div>
+    ` : `
+    <div class="metric"><div class="m-label">💰 月現金流</div><div class="m-val" style="color:${cashflowAmort>=0?'#1a8a3c':'#d0392b'};">${cashflowAmort>=0?'+':''}${fmt(cashflowAmort)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－月付 ${fmt(amortMonthly)}</div></div>
+    `}
   `;
 
   document.getElementById('fund-summary').textContent =
@@ -855,26 +860,24 @@ function renderSummary() {
     <div class="metric"><div class="m-label">💱 假設匯率</div><div class="m-val" style="font-size:18px;">1 USD=${fmt(rate,2)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">TWD（估算基準）</div></div>
   `;
 
-  // 若不清償房貸：底部固定顯示每月／每年現金流，以及保單生存保險金（獨立於清償與否，固定領得到）。
+  // 繳完房貸後（第 ${lastRow.year} 年房貸依正常攤還期程全數繳清，非提前用保單現金價值清償）：
+  // 此時已無房貸月付款、也沒有寬限期與否的分別，現金流來源只剩配息基金的月配息，
+  // 加上保單本身從約定領取年齡起，不論房貸清償與否都固定給付的生存保險金。
   const noPayoffBox = document.getElementById('summary-noPayoff');
   if (noPayoffBox) {
     if (fundResult) {
       const monthlyTwd = fundResult.monthlyTwd;
-      const cashflowGraceM = monthlyTwd - mortgageGraceMonthly;
-      const cashflowAmortM = monthlyTwd - mortgageAmortMonthly;
       const survAnnualTwd = survStartRow ? (((survStartRow.survival_total ?? survStartRow.survival_benefit) || 0) * rate) : 0;
       const survSub = survStartYear
-        ? `第 ${survStartYear} 年起，不論是否清償房貸都領得到`
+        ? `第 ${survStartYear} 年起，不論房貸是否清償都領得到`
         : (isRetPolicy ? '尚未到達約定領取年齡' : '本商品無生存保險金');
       noPayoffBox.innerHTML = `
-        <div class="metric"><div class="m-label">🏦 寬限期月現金流</div><div class="m-val" style="color:${cashflowGraceM>=0?'#0071e3':'#d0392b'}">${cashflowGraceM>=0?'+':''}${fmt(cashflowGraceM)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－房貸月付（寬限期）</div></div>
-        <div class="metric"><div class="m-label">🏦 寬限期年現金流</div><div class="m-val" style="color:${cashflowGraceM>=0?'#0071e3':'#d0392b'}">${cashflowGraceM>=0?'+':''}${fmt(cashflowGraceM*12)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">月現金流 × 12</div></div>
-        <div class="metric"><div class="m-label">📅 寬限後月現金流</div><div class="m-val" style="color:${cashflowAmortM>=0?'#0071e3':'#d0392b'}">${cashflowAmortM>=0?'+':''}${fmt(cashflowAmortM)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－房貸月付（本息攤還）</div></div>
-        <div class="metric"><div class="m-label">📅 寬限後年現金流</div><div class="m-val" style="color:${cashflowAmortM>=0?'#0071e3':'#d0392b'}">${cashflowAmortM>=0?'+':''}${fmt(cashflowAmortM*12)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">月現金流 × 12</div></div>
+        <div class="metric"><div class="m-label">💵 每月現金流</div><div class="m-val" style="color:#0071e3">+${fmt(monthlyTwd)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息基金月配息，全額保留</div></div>
+        <div class="metric"><div class="m-label">📅 每年現金流</div><div class="m-val" style="color:#0071e3">+${fmt(monthlyTwd*12 + survAnnualTwd)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">月配息×12${survAnnualTwd>0?'（含保單生存保險金）':''}</div></div>
         <div class="metric"><div class="m-label">🎁 保單生存保險金（年）</div><div class="m-val" style="color:${survAnnualTwd>0?'#0a8a4c':'#86868b'}">${survAnnualTwd>0?'+'+fmt(survAnnualTwd):'—'}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">${survSub}</div></div>
       `;
     } else {
-      noPayoffBox.innerHTML = `<div class="hint" style="grid-column:1/-1;">請先完成「配息基金」分頁試算，才能顯示不清償房貸情境的現金流。</div>`;
+      noPayoffBox.innerHTML = `<div class="hint" style="grid-column:1/-1;">請先完成「配息基金」分頁試算，才能顯示繳完房貸後的現金流。</div>`;
     }
   }
 }
