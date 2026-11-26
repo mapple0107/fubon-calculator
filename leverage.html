@@ -433,7 +433,7 @@
         <div class="metric-grid-4" id="summary-metrics"></div>
         <div style="max-height:420px; overflow-y:auto;">
         <table>
-          <thead><tr><th>年度</th><th>借款人年齡</th><th>房貸餘額<br><small>（台幣）</small></th><th>保單現金價值</th><th>基金累計投入</th><th>貸款與現價差額</th><th>身故保額<br><small>（台幣）</small></th></tr></thead>
+          <thead><tr><th>年度</th><th>借款人年齡</th><th>房貸餘額<br><small>（台幣）</small></th><th>保單現金價值</th><th>基金累計投入</th><th>貸款與現價差額</th><th>身故保額<br><small>（台幣）</small></th><th>保單生存保險金<br><small>（台幣／年）</small></th></tr></thead>
           <tbody id="summary-table"></tbody>
         </table>
         </div>
@@ -741,18 +741,26 @@ function renderSummary() {
   document.getElementById('summary-fx-note').textContent =
     `保單數值以假設匯率 1 USD ≈ ${fmt(rate,2)} TWD 換算成台幣進行比較，實際金額以匯率波動為準。`;
 
+  // PF55~65 這類退休規劃（RET）商品，保單本身從約定領取年齡起每年會給付生存保險金，
+  // 跟是否用保單解約／借款清償房貸無關，固定每年都領得到，所以另外算出來，不併入「貸款與現價差額」。
+  const isRetPolicy = policyTableProduct && policyTableProduct.tableType === 'RET';
+  const survStartRow = isRetPolicy ? policyTableRows.find(r => ((r.survival_total ?? r.survival_benefit) || 0) > 0) : null;
+  const survStartYear = survStartRow ? Math.round(survStartRow.policy_year) : null;
+
   // 先算出每一年的資料與「貸款與現價差額」轉正的年度，再畫表格（需要先知道轉正年度才能標記該列）。
   let exceedYear = null;
   const rowsOut = mortgageSchedule.map(row => {
     const pRow = findPolicyRowForYear(row.year);
     const cashUsd = pRow ? (pRow.total_cash_value ?? pRow.cash_value) : null;
     const deathUsd = pRow ? (pRow.total_death_benefit ?? pRow.death_benefit) : null;
+    const survUsd = (isRetPolicy && pRow) ? ((pRow.survival_total ?? pRow.survival_benefit) || 0) : 0;
     const cashTwd = (cashUsd !== null && cashUsd !== undefined) ? cashUsd * rate : null;
     const deathTwd = (deathUsd !== null && deathUsd !== undefined) ? deathUsd * rate : null;
+    const survTwd = survUsd > 0 ? survUsd * rate : null;
     const gap = (cashTwd !== null ? cashTwd : 0) - row.endBal;
     const age = baseAge !== null ? baseAge + (row.year - 1) : null;
     if (exceedYear === null && gap >= 0) exceedYear = row.year;
-    return { row, age, cashTwd, deathTwd, gap };
+    return { row, age, cashTwd, deathTwd, survTwd, gap };
   });
 
   const fundCell = fundResult
@@ -777,6 +785,7 @@ function renderSummary() {
       <td>${fundCell}</td>
       <td style="color:${r.gap>=0?'#1a8a3c':'#d0392b'}">${r.gap>=0?'+':''}${fmt(r.gap)}</td>
       <td>${r.deathTwd !== null ? fmt(r.deathTwd) : '—'}</td>
+      <td style="color:${r.survTwd ? '#1a8a3c' : '#86868b'}">${r.survTwd ? '+' + fmt(r.survTwd) : '—'}</td>
     </tr>`;
 
     if (isExpanded) {
@@ -1020,6 +1029,7 @@ async function calcPolicy() {
 let policyTableRows = [];
 let policyTableRate = 0;
 let policyTableCurrency = 'USD';
+let policyTableProduct = null;   // 目前這筆試算對應的商品設定（RET 型如 PF55~65 才需要顯示生存金欄位）
 
 function togglePolicyCurrency() {
   if (!(policyTableRate > 0)) return;
@@ -1031,13 +1041,15 @@ function renderPolicyTable() {
   const twd = policyTableCurrency === 'TWD' && policyTableRate > 0;
   const unit = twd ? '（台幣）' : '（美元）';
   const money = v => (v === null || v === undefined) ? '—' : fmt(twd ? v * policyTableRate : v);
+  const isRet = policyTableProduct && policyTableProduct.tableType === 'RET';
 
   document.getElementById('policy-thead').innerHTML = `<tr>
     <th>保單年度</th><th>保險年齡</th>
     <th>累計實繳保費<br><small>${unit}</small></th>
+    ${isRet ? `<th>當年度可領<br>生存保險金<br><small>${unit}</small></th><th>累計已領<br>生存保險金<br><small>${unit}</small></th>` : ''}
     <th>身故保障<br><small>${unit}</small></th>
     <th>年度末解約金額<br><small>${unit}</small></th>
-    <th>解約獲利<br><small>${unit}</small></th>
+    <th>解約獲利${isRet ? '<br><small>含已領生存金</small>' : ''}<br><small>${unit}</small></th>
   </tr>`;
 
   const tbody = document.getElementById('policy-table');
@@ -1046,11 +1058,16 @@ function renderPolicyTable() {
     const cash = row.total_cash_value ?? row.cash_value;
     const death = row.total_death_benefit ?? row.death_benefit;
     const cum = row.cum_premium;
-    const gain = (cash !== null && cash !== undefined && cum) ? cash - cum : null;
+    const survYear = row.survival_total ?? row.survival_benefit;
+    const survCum = row.cum_survival_total;
+    // 退休規劃型商品（PF55~65）：解約獲利要把已領的生存保險金一併算進去，才是真正拿回的總額
+    const cashForGain = (cash !== null && cash !== undefined) ? cash + (isRet ? (survCum || 0) : 0) : null;
+    const gain = (cashForGain !== null && cum) ? cashForGain - cum : null;
     tbody.innerHTML += `<tr>
       <td>第 ${Math.round(row.policy_year)} 年</td>
       <td>${row.age !== null && row.age !== undefined ? Math.round(row.age) + ' 歲' : '—'}</td>
       <td>${money(cum)}</td>
+      ${isRet ? `<td>${survYear ? money(survYear) : '—'}</td><td>${survCum ? money(survCum) : '—'}</td>` : ''}
       <td>${death !== null && death !== undefined ? money(death) : '—'}</td>
       <td>${cash !== null && cash !== undefined ? money(cash) : '—'}</td>
       <td style="color:${gain !== null && gain > 0 ? '#1a8a3c' : '#86868b'}">${gain !== null && gain > 0 ? '+' + money(gain) : '—'}</td>
@@ -1089,6 +1106,7 @@ function renderPolicyResults(data, product, rate) {
   policyTableRows = rows;
   policyTableRate = rate;
   policyTableCurrency = 'USD';
+  policyTableProduct = product;
   renderPolicyTable();
 
   const downloadBtn = document.getElementById('policy-download-btn');
