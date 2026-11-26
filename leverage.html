@@ -854,6 +854,29 @@ function renderSummary() {
     <div class="metric"><div class="m-label">📈 保單回本年</div><div class="m-val" style="font-size:18px;">${policyBreakEvenLabel}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">解約金≥累計保費</div></div>
     <div class="metric"><div class="m-label">💱 假設匯率</div><div class="m-val" style="font-size:18px;">1 USD=${fmt(rate,2)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">TWD（估算基準）</div></div>
   `;
+
+  // 若不清償房貸：底部固定顯示每月／每年現金流，以及保單生存保險金（獨立於清償與否，固定領得到）。
+  const noPayoffBox = document.getElementById('summary-noPayoff');
+  if (noPayoffBox) {
+    if (fundResult) {
+      const monthlyTwd = fundResult.monthlyTwd;
+      const cashflowGraceM = monthlyTwd - mortgageGraceMonthly;
+      const cashflowAmortM = monthlyTwd - mortgageAmortMonthly;
+      const survAnnualTwd = survStartRow ? (((survStartRow.survival_total ?? survStartRow.survival_benefit) || 0) * rate) : 0;
+      const survSub = survStartYear
+        ? `第 ${survStartYear} 年起，不論是否清償房貸都領得到`
+        : (isRetPolicy ? '尚未到達約定領取年齡' : '本商品無生存保險金');
+      noPayoffBox.innerHTML = `
+        <div class="metric"><div class="m-label">🏦 寬限期月現金流</div><div class="m-val" style="color:${cashflowGraceM>=0?'#0071e3':'#d0392b'}">${cashflowGraceM>=0?'+':''}${fmt(cashflowGraceM)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－房貸月付（寬限期）</div></div>
+        <div class="metric"><div class="m-label">🏦 寬限期年現金流</div><div class="m-val" style="color:${cashflowGraceM>=0?'#0071e3':'#d0392b'}">${cashflowGraceM>=0?'+':''}${fmt(cashflowGraceM*12)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">月現金流 × 12</div></div>
+        <div class="metric"><div class="m-label">📅 寬限後月現金流</div><div class="m-val" style="color:${cashflowAmortM>=0?'#0071e3':'#d0392b'}">${cashflowAmortM>=0?'+':''}${fmt(cashflowAmortM)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">配息－房貸月付（本息攤還）</div></div>
+        <div class="metric"><div class="m-label">📅 寬限後年現金流</div><div class="m-val" style="color:${cashflowAmortM>=0?'#0071e3':'#d0392b'}">${cashflowAmortM>=0?'+':''}${fmt(cashflowAmortM*12)}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">月現金流 × 12</div></div>
+        <div class="metric"><div class="m-label">🎁 保單生存保險金（年）</div><div class="m-val" style="color:${survAnnualTwd>0?'#0a8a4c':'#86868b'}">${survAnnualTwd>0?'+'+fmt(survAnnualTwd):'—'}</div><div style="font-size:11px;color:#86868b;margin-top:4px;">${survSub}</div></div>
+      `;
+    } else {
+      noPayoffBox.innerHTML = `<div class="hint" style="grid-column:1/-1;">請先完成「配息基金」分頁試算，才能顯示不清償房貸情境的現金流。</div>`;
+    }
+  }
 }
 
 /* ---------- 保單試算（串接建議書系統官方後端） ---------- */
